@@ -40,5 +40,8 @@ window.__ENV.REACT_APP_AAD_ALLOWED_ROLES = "${AAD_ALLOWED_ROLES}";
 window.__ENV.REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN = "${AAD_ALLOWED_EMAIL_DOMAIN}";
 EOF
 
+# Ensure nginx worker can always read the generated runtime config.
+chmod 644 "$ENV_JS"
+
 # Execute the original command
 exec "$@"
