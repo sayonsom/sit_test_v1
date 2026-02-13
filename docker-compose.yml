@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  virtuallab:
+    build: .
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      # nginx proxies `/api/v1/*` to Cloud Run so the app can use same-origin calls.
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-/api/v1}
+      # Optional: if omitted, the frontend falls back to window.location.origin
+      - REACT_APP_LTI_API_URL=${REACT_APP_LTI_API_URL:-}
+      - REACT_APP_AUTH0_DOMAIN=${REACT_APP_AUTH0_DOMAIN:-dev-o4fxv2xy7kvnxb0d.us.auth0.com}
+      - REACT_APP_AUTH0_CLIENT_ID=${REACT_APP_AUTH0_CLIENT_ID:-R227TInzL2MGUwozJQiObpDauZ2yRTod}
+      - REACT_APP_MAPS_API=${REACT_APP_MAPS_API:-}
+      # Optional: Staff/Admin direct login via Microsoft Entra ID (Azure AD)
+      - REACT_APP_AAD_CLIENT_ID=${REACT_APP_AAD_CLIENT_ID:-}
+      - REACT_APP_AAD_TENANT_ID=${REACT_APP_AAD_TENANT_ID:-}
+      - REACT_APP_AAD_AUTHORITY=${REACT_APP_AAD_AUTHORITY:-}
+      - REACT_APP_AAD_REDIRECT_URI=${REACT_APP_AAD_REDIRECT_URI:-}
+      - REACT_APP_AAD_SCOPES=${REACT_APP_AAD_SCOPES:-}
+      - REACT_APP_AAD_ALLOWED_GROUP_IDS=${REACT_APP_AAD_ALLOWED_GROUP_IDS:-}
+      - REACT_APP_AAD_ALLOWED_ROLES=${REACT_APP_AAD_ALLOWED_ROLES:-}
+      - REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=${REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

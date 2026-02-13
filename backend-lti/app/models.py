@@ -1,0 +1,39 @@
+"""
+Pydantic Models for LTI Backend API
+Defines request/response schemas
+"""
+from pydantic import BaseModel
+from typing import Dict, List, Any, Optional
+
+
+class SessionResponse(BaseModel):
+    """Response model for session validation"""
+    user: Dict[str, Any]
+    course: Dict[str, Any]
+
+
+class LogoutRequest(BaseModel):
+    """Request model for logout (can be empty)"""
+    pass
+
+
+class UserInfo(BaseModel):
+    """User information model"""
+    user_id: str
+    name: str
+    given_name: str
+    family_name: str
+    email: str
+    picture: Optional[str] = ""
+    roles: List[str]
+    sub: str
+
+
+class CourseInfo(BaseModel):
+    """Course information model"""
+    course_id: str
+    course_code: str
+    course_title: str
+    course_section: str
+    course_offering_sourcedid: Optional[str] = ""
+    context_type: List[str] = []

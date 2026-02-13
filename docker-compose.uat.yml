@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  virtuallab:
+    build: .
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      # In UAT/prod, nginx proxies `/api/v1/*` to Cloud Run so the app can use same-origin calls.
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-/api/v1}
+      # Optional: if omitted, the frontend falls back to window.location.origin
+      - REACT_APP_LTI_API_URL=${REACT_APP_LTI_API_URL:-}
+      - REACT_APP_AUTH0_DOMAIN=${REACT_APP_AUTH0_DOMAIN:-}
+      - REACT_APP_AUTH0_CLIENT_ID=${REACT_APP_AUTH0_CLIENT_ID:-}
+      - REACT_APP_MAPS_API=${REACT_APP_MAPS_API:-}
+      # Optional: Staff/Admin direct login via Microsoft Entra ID (Azure AD)
+      - REACT_APP_AAD_CLIENT_ID=${REACT_APP_AAD_CLIENT_ID:-}
+      - REACT_APP_AAD_TENANT_ID=${REACT_APP_AAD_TENANT_ID:-}
+      - REACT_APP_AAD_AUTHORITY=${REACT_APP_AAD_AUTHORITY:-}
+      - REACT_APP_AAD_REDIRECT_URI=${REACT_APP_AAD_REDIRECT_URI:-}
+      - REACT_APP_AAD_SCOPES=${REACT_APP_AAD_SCOPES:-}
+      - REACT_APP_AAD_ALLOWED_GROUP_IDS=${REACT_APP_AAD_ALLOWED_GROUP_IDS:-}
+      - REACT_APP_AAD_ALLOWED_ROLES=${REACT_APP_AAD_ALLOWED_ROLES:-}
+      - REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=${REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN:-}
+    depends_on:
+      - lti-backend
+    restart: unless-stopped
+
+  lti-backend:
+    build:
+      context: ./backend-lti
+    environment:
+      - CLIENT_ID=${CLIENT_ID}
+      - DEPLOYMENT_ID=${DEPLOYMENT_ID}
+      - ISSUER=${ISSUER}
+      - AUTHORIZATION_ENDPOINT=${AUTHORIZATION_ENDPOINT}
+      - KEY_SET_URL=${KEY_SET_URL}
+
+      - TOOL_URL=${TOOL_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_SSL=false
+
+      - SESSION_TTL=${SESSION_TTL:-28800}
+      - STATE_TTL=${STATE_TTL:-300}
+
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - BACKEND_API_URL=${BACKEND_API_URL}
+
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
