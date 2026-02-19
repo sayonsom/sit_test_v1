@@ -14,6 +14,28 @@ const DEFAULT_AUTHORITY = "https://login.microsoftonline.com/organizations";
 
 const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
 
+const resolveAuthority = () => {
+  if (AAD_AUTHORITY) return AAD_AUTHORITY;
+  if (AAD_TENANT_ID) return `https://login.microsoftonline.com/${AAD_TENANT_ID}`;
+  return DEFAULT_AUTHORITY;
+};
+
+const authority = resolveAuthority();
+
+const getAuthorityHost = (value) => {
+  try {
+    return new URL(value).host;
+  } catch {
+    return undefined;
+  }
+};
+
+const authorityHost = getAuthorityHost(authority);
+const isMicrosoftOnlineAuthority = authorityHost
+  ? authorityHost === "login.microsoftonline.com" || authorityHost.endsWith(".microsoftonline.com")
+  : false;
+const useCustomOidcAuthority = Boolean(authorityHost && !isMicrosoftOnlineAuthority);
+
 const resolveRedirectUri = () => {
   if (!AAD_REDIRECT_URI) {
     return `${origin}/staff`;
@@ -33,9 +55,13 @@ export const isAadConfigured = Boolean(AAD_CLIENT_ID);
 export const msalConfig = {
   auth: {
     clientId: AAD_CLIENT_ID || DEFAULT_CLIENT_ID,
-    authority:
-      AAD_AUTHORITY ||
-      (AAD_TENANT_ID ? `https://login.microsoftonline.com/${AAD_TENANT_ID}` : DEFAULT_AUTHORITY),
+    authority,
+    ...(useCustomOidcAuthority
+      ? {
+          knownAuthorities: [authorityHost],
+          protocolMode: "OIDC",
+        }
+      : {}),
     redirectUri,
     postLogoutRedirectUri: `${origin}/`,
     navigateToLoginRequestUrl: false,
