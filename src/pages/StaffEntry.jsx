@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal } from "@azure/msal-react";
 import { aadRestrictions, isAadConfigured, loginRequest } from "../authConfig";
@@ -44,11 +44,28 @@ const isAccountAllowed = (account) => {
 
 export default function StaffEntry() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { instance, accounts, inProgress } = useMsal();
   const { loginStaff } = useLTI();
   const [error, setError] = useState(null);
 
   const account = useMemo(() => accounts?.[0], [accounts]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const errorCode = query.get("error");
+    const errorDescription = query.get("error_description");
+    const clientRequestId = query.get("client-request-id") || query.get("client_request_id");
+
+    if (!errorCode && !errorDescription && !clientRequestId) return;
+
+    const parts = [];
+    if (errorCode) parts.push(`Sign-in failed (${errorCode}).`);
+    if (errorDescription) parts.push(errorDescription);
+    if (clientRequestId) parts.push(`Request ID: ${clientRequestId}`);
+
+    setError(parts.join(" "));
+  }, [location.search]);
 
   useEffect(() => {
     if (!isAadConfigured) return;
@@ -85,7 +102,14 @@ export default function StaffEntry() {
       );
       return;
     }
-    await instance.loginRedirect(loginRequest);
+    try {
+      await instance.loginRedirect(loginRequest);
+    } catch (e) {
+      const message =
+        (e && typeof e === "object" && "message" in e && e.message) ||
+        "Sign-in request failed.";
+      setError(String(message));
+    }
   };
 
   const handleSignOut = async () => {

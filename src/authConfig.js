@@ -87,5 +87,10 @@ export const aadRestrictions = {
 };
 
 export const loginRequest = {
-  scopes: parseCsv(AAD_SCOPES).length > 0 ? parseCsv(AAD_SCOPES) : ["openid", "profile", "email"],
+  scopes:
+    parseCsv(AAD_SCOPES).length > 0
+      ? parseCsv(AAD_SCOPES)
+      : useCustomOidcAuthority
+        ? ["openid"]
+        : ["openid", "profile", "email"],
 };
