@@ -73,9 +73,13 @@ export default function StaffEntry() {
   }, [location.hash, location.search]);
 
   useEffect(() => {
-    const { errorCode, errorDescription, requestId } = callbackData;
+    const { code, state, errorCode, errorDescription, requestId } = callbackData;
+    const hasValidAuthCodePayload = Boolean(code && state);
+    const shouldShowProviderError = Boolean(
+      errorCode || errorDescription || (requestId && !hasValidAuthCodePayload)
+    );
 
-    if (!errorCode && !errorDescription && !requestId) return;
+    if (!shouldShowProviderError) return;
 
     const parts = [];
     if (errorCode) parts.push(`Sign-in failed (${errorCode}).`);
@@ -93,8 +97,8 @@ export default function StaffEntry() {
     if (location.pathname !== "/oauth2/callback") return;
     if (callbackHandled.current) return;
 
-    const { code, state, errorCode, errorDescription, requestId } = callbackData;
-    if (errorCode || errorDescription || requestId) return;
+    const { code, state, errorCode, errorDescription } = callbackData;
+    if (errorCode || errorDescription) return;
     if (!code || !state) return;
 
     callbackHandled.current = true;
