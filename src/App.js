@@ -11,18 +11,69 @@ import AppEntry from "./pages/AppEntry";
 import LtiRequired from "./pages/LtiRequired";
 import Dashboard from "./pages/Dashboard";
 import StaffEntry from "./pages/StaffEntry";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 
 export const App = () => {
   return (
     <Routes>
-      <Route path="/Home" element={<Home />} />
-      <Route path="/results" element={<QuizResults />} />
-      <Route path="/courses" element={<Home />} />
-      <Route path="/courses/:courseShortCode" element={<CourseDetailsPage />} />
-      <Route path="/module/:moduleID" element={<ModuleDetailPage />} />
+      <Route
+        path="/Home"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/results"
+        element={
+          <ProtectedRoute>
+            <QuizResults />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courses"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courses/:courseShortCode"
+        element={
+          <ProtectedRoute>
+            <CourseDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/module/:moduleID"
+        element={
+          <ProtectedRoute>
+            <ModuleDetailPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/app" element={<AppEntry />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/staff" element={<StaffEntry />} />
       <Route path="/oauth2/callback" element={<StaffEntry />} />
       <Route path="/lti-required" element={<LtiRequired />} />
