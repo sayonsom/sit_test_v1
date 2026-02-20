@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     STAFF_OIDC_REDIRECT_URI: str = os.getenv("STAFF_OIDC_REDIRECT_URI", "")
     STAFF_OIDC_SCOPES: str = os.getenv("STAFF_OIDC_SCOPES", "openid")
     STAFF_OIDC_METADATA_URL: str = os.getenv("STAFF_OIDC_METADATA_URL", "")
+    STAFF_OIDC_POST_LOGOUT_REDIRECT_URI: str = os.getenv("STAFF_OIDC_POST_LOGOUT_REDIRECT_URI", "")
 
     @property
     def staff_oidc_scopes_list(self) -> List[str]:
@@ -73,6 +74,12 @@ class Settings(BaseSettings):
         if not self.STAFF_OIDC_AUTHORITY:
             return ""
         return f"{self.STAFF_OIDC_AUTHORITY.rstrip('/')}/.well-known/openid-configuration"
+
+    @property
+    def staff_oidc_post_logout_redirect_uri(self) -> str:
+        if self.STAFF_OIDC_POST_LOGOUT_REDIRECT_URI:
+            return self.STAFF_OIDC_POST_LOGOUT_REDIRECT_URI
+        return f"{self.FRONTEND_URL.rstrip('/')}/staff"
 
     class Config:
         env_file = ".env"

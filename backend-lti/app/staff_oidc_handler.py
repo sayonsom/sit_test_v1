@@ -115,6 +115,25 @@ class StaffOIDCHandler:
         user = self._extract_user_info(claims)
         return user, claims
 
+    async def build_logout_url(self) -> str:
+        if not self.is_configured:
+            raise ValueError("Staff OIDC is not configured.")
+
+        metadata = await self._get_metadata()
+        end_session_endpoint = metadata.get("end_session_endpoint")
+
+        if end_session_endpoint:
+            params = {
+                "post_logout_redirect_uri": settings.staff_oidc_post_logout_redirect_uri,
+                "client_id": settings.STAFF_OIDC_CLIENT_ID,
+            }
+            query = urllib.parse.urlencode(params, safe=":/", quote_via=urllib.parse.quote)
+            separator = "&" if "?" in end_session_endpoint else "?"
+            return f"{end_session_endpoint}{separator}{query}"
+
+        authority = settings.STAFF_OIDC_AUTHORITY.rstrip("/")
+        return f"{authority}/ls/?wa=wsignout1.0"
+
     async def _get_metadata(self) -> Dict[str, Any]:
         if self._metadata:
             return self._metadata

@@ -51,18 +51,22 @@ export default function AppLayout({ children }) {
       
       setUserFullName(displayName);
       setUserPhoto(user.picture || "https://res.cloudinary.com/dti7egpsg/image/upload/v1695741601/SIT%20Align/SIT_logo_2_llcb1k.png");
+      return;
     }
+    setUserFullName(null);
+    setUserPhoto(null);
   }, [isAuthenticated, user]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Are you sure you want to log out?")) {
-      logout(); // LTI logout handles everything
+      await logout();
     }
   };
 
-  const handleMenuClick = (pageName) => {
+  const handleMenuClick = async (event, pageName) => {
+    event.preventDefault();
     if (pageName === "Log Out") {
-      handleLogout();
+      await handleLogout();
       // alert("Log Out function is disabled.");
     }
   };
@@ -253,7 +257,7 @@ export default function AppLayout({ children }) {
                                 active ? 'bg-gray-50 dark:bg-red-600' : '',
                                 'block px-3 py-1 text-sm leading-6 text-gray-900 dark:text-white'
                               )}
-                              onClick={() => handleMenuClick(item.name)}
+                              onClick={(event) => handleMenuClick(event, item.name)}
                             >
                               {item.name}
                             </a>

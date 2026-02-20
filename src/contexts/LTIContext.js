@@ -4,6 +4,15 @@ import { LTI_API_URL } from "../env";
 
 const LTIContext = createContext();
 
+const resolveLtiUrl = (path) => {
+  const base = (LTI_API_URL || "").replace(/\/$/, "");
+  if (!base) return path;
+  if (base.startsWith("http://") || base.startsWith("https://")) return `${base}${path}`;
+  if (base.startsWith("/")) return `${base}${path}`;
+  if (typeof window !== "undefined") return `${window.location.origin}/${base}${path}`;
+  return `${base}${path}`;
+};
+
 export const LTIProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [course, setCourse] = useState(null);
@@ -112,6 +121,8 @@ export const LTIProvider = ({ children }) => {
 
   const logout = async () => {
     const sessionToken = localStorage.getItem('lti_session_token');
+    const hadLtiSession = Boolean(sessionToken);
+    const hadStaffSession = Boolean(localStorage.getItem('staff_user'));
     
     if (sessionToken) {
       try {
@@ -146,7 +157,11 @@ export const LTIProvider = ({ children }) => {
     setAuthMethod("none");
     
     // Redirect based on previous auth method
-    if (sessionToken) {
+    if (hadStaffSession) {
+      window.location.href = resolveLtiUrl('/lti/staff/logout');
+      return;
+    }
+    if (hadLtiSession) {
       window.location.href = '/lti-required';
       return;
     }

@@ -238,6 +238,20 @@ async def staff_exchange(payload: StaffCodeExchangeRequest):
         raise HTTPException(status_code=500, detail="Staff sign-in failed")
 
 
+@app.get("/lti/staff/logout")
+async def staff_logout():
+    """
+    Start staff/admin logout at identity provider.
+    Frontend should clear local state first, then redirect here.
+    """
+    try:
+        logout_url = await staff_oidc_handler.build_logout_url()
+        return RedirectResponse(url=logout_url, status_code=302)
+    except Exception as e:
+        logger.error(f"Error starting staff logout: {str(e)}", exc_info=True)
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/staff", status_code=302)
+
+
 @app.get("/lti/session/validate")
 async def validate_session(authorization: Optional[str] = Header(None)) -> SessionResponse:
     """
