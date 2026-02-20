@@ -206,13 +206,13 @@ async def lti_launch(
 
 
 @app.get("/lti/staff/login")
-async def staff_login():
+async def staff_login(prompt: Optional[str] = None):
     """
     Start staff/admin OIDC login.
     Uses server-generated state/PKCE and redirects user to IdP authorize endpoint.
     """
     try:
-        auth_url = await staff_oidc_handler.build_authorization_url()
+        auth_url = await staff_oidc_handler.build_authorization_url(prompt=prompt)
         return RedirectResponse(url=auth_url, status_code=302)
     except ValueError as e:
         logger.error(f"Staff login configuration error: {str(e)}")

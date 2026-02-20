@@ -113,6 +113,7 @@ export const LTIProvider = ({ children }) => {
 
   const loginStaff = (staffUser) => {
     localStorage.setItem('staff_user', JSON.stringify(staffUser));
+    localStorage.removeItem('staff_force_reauth');
     setUser(staffUser);
     setCourse(null);
     setIsAuthenticated(true);
@@ -147,6 +148,7 @@ export const LTIProvider = ({ children }) => {
 
     // Clear staff auth (if any)
     localStorage.removeItem('staff_user');
+    localStorage.removeItem('staff_force_reauth');
     
     // Clear other session data
     sessionStorage.clear();
@@ -158,6 +160,7 @@ export const LTIProvider = ({ children }) => {
     
     // Redirect based on previous auth method
     if (hadStaffSession) {
+      localStorage.setItem('staff_force_reauth', '1');
       window.location.href = resolveLtiUrl('/lti/staff/logout');
       return;
     }

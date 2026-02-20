@@ -158,7 +158,11 @@ export default function StaffEntry() {
       setError("Staff/Admin sign-in is not configured. Set REACT_APP_AAD_CLIENT_ID.");
       return;
     }
-    window.location.assign(buildLtiUrl("/lti/staff/login"));
+    const shouldForceReauth = localStorage.getItem("staff_force_reauth") === "1";
+    const loginPath = shouldForceReauth
+      ? "/lti/staff/login?prompt=login"
+      : "/lti/staff/login";
+    window.location.assign(buildLtiUrl(loginPath));
   };
 
   const handleSignOut = async () => {

@@ -33,7 +33,7 @@ class StaffOIDCHandler:
     def is_configured(self) -> bool:
         return bool(settings.STAFF_OIDC_CLIENT_ID and settings.STAFF_OIDC_AUTHORITY)
 
-    async def build_authorization_url(self) -> str:
+    async def build_authorization_url(self, prompt: Optional[str] = None) -> str:
         if not self.is_configured:
             raise ValueError("Staff OIDC is not configured.")
 
@@ -63,10 +63,23 @@ class StaffOIDCHandler:
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
         }
+        prompt_value = self._normalize_prompt(prompt)
+        if prompt_value:
+            params["prompt"] = prompt_value
 
         query = urllib.parse.urlencode(params, safe=":/", quote_via=urllib.parse.quote)
         separator = "&" if "?" in authorization_endpoint else "?"
         return f"{authorization_endpoint}{separator}{query}"
+
+    @staticmethod
+    def _normalize_prompt(prompt: Optional[str]) -> Optional[str]:
+        if not prompt:
+            return None
+        normalized = prompt.strip()
+        allowed_values = {"none", "login", "consent", "select_account"}
+        if normalized in allowed_values:
+            return normalized
+        return None
 
     async def exchange_code(self, code: str, state: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if not self.is_configured:
