@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { InteractionStatus } from "@azure/msal-browser";
-import { useMsal } from "@azure/msal-react";
-import { aadRestrictions, isAadConfigured, loginRequest } from "../authConfig";
+import axios from "axios";
+import { aadRestrictions, isAadConfigured } from "../authConfig";
 import { useLTI } from "../contexts/LTIContext";
+import { LTI_API_URL } from "../env";
 
 const normalizeDomain = (domain) => {
   if (typeof domain !== "string") return undefined;
@@ -18,12 +18,11 @@ const toArray = (value) => {
   return [];
 };
 
-const isAccountAllowed = (account) => {
-  const email = account?.username || "";
-  const claims = account?.idTokenClaims || {};
+const isAccountAllowed = (claims, email = "") => {
+  const accountEmail = email || claims?.email || claims?.upn || claims?.unique_name || "";
 
   const allowedDomain = normalizeDomain(aadRestrictions.allowedEmailDomain);
-  if (allowedDomain && !email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
+  if (allowedDomain && !accountEmail.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
     return { allowed: false, reason: `Email domain must be @${allowedDomain}.` };
   }
 
@@ -42,87 +41,126 @@ const isAccountAllowed = (account) => {
   return { allowed: true };
 };
 
+const getValue = (query, hash, key) => query.get(key) || hash.get(key);
+
+const buildLtiUrl = (path) => {
+  const base = (LTI_API_URL || "").replace(/\/$/, "");
+  if (!base) return path;
+  if (base.startsWith("http://") || base.startsWith("https://")) return `${base}${path}`;
+  if (base.startsWith("/")) return `${base}${path}`;
+  return `${window.location.origin}/${base}${path}`;
+};
+
 export default function StaffEntry() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { instance, accounts, inProgress } = useMsal();
-  const { loginStaff } = useLTI();
+  const { loginStaff, logout } = useLTI();
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const callbackHandled = useRef(false);
 
-  const account = useMemo(() => accounts?.[0], [accounts]);
-
-  useEffect(() => {
+  const callbackData = useMemo(() => {
     const query = new URLSearchParams(location.search);
     const hash = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+    return {
+      code: getValue(query, hash, "code"),
+      state: getValue(query, hash, "state"),
+      errorCode: getValue(query, hash, "error"),
+      errorDescription: getValue(query, hash, "error_description"),
+      requestId:
+        getValue(query, hash, "client-request-id") || getValue(query, hash, "client_request_id"),
+    };
+  }, [location.hash, location.search]);
 
-    const getParam = (key) => query.get(key) || hash.get(key);
+  useEffect(() => {
+    const { errorCode, errorDescription, requestId } = callbackData;
 
-    const errorCode = getParam("error");
-    const errorDescription = getParam("error_description");
-    const clientRequestId = getParam("client-request-id") || getParam("client_request_id");
-
-    if (!errorCode && !errorDescription && !clientRequestId) return;
+    if (!errorCode && !errorDescription && !requestId) return;
 
     const parts = [];
     if (errorCode) parts.push(`Sign-in failed (${errorCode}).`);
     if (errorDescription) parts.push(errorDescription);
-    if (!errorCode && !errorDescription && clientRequestId) {
+    if (!errorCode && !errorDescription && requestId) {
       parts.push("Sign-in failed at identity provider.");
     }
-    if (clientRequestId) parts.push(`Request ID: ${clientRequestId}`);
+    if (requestId) parts.push(`Request ID: ${requestId}`);
 
     setError(parts.join(" "));
-  }, [location.hash, location.search]);
+  }, [callbackData]);
 
   useEffect(() => {
     if (!isAadConfigured) return;
-    if (!account) return;
-    if (inProgress !== InteractionStatus.None) return;
+    if (location.pathname !== "/oauth2/callback") return;
+    if (callbackHandled.current) return;
 
-    const { allowed, reason } = isAccountAllowed(account);
-    if (!allowed) {
-      setError(reason || "Access denied.");
-      return;
-    }
+    const { code, state, errorCode, errorDescription, requestId } = callbackData;
+    if (errorCode || errorDescription || requestId) return;
+    if (!code || !state) return;
 
-    instance.setActiveAccount(account);
+    callbackHandled.current = true;
+    setIsLoading(true);
+    setError(null);
 
-    const email = account.username;
-    const name = account.name || account.username;
-    const picture = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200`;
+    const exchangeCode = async () => {
+      try {
+        const response = await axios.post(
+          buildLtiUrl("/lti/staff/exchange"),
+          { code, state },
+          { timeout: 20000 }
+        );
 
-    loginStaff({
-      email,
-      name,
-      picture,
-      user_id: email,
-    });
+        const user = response?.data?.user || null;
+        const claims = response?.data?.claims || {};
+        if (!user) {
+          setError("Staff sign-in response is missing user data.");
+          return;
+        }
 
-    navigate("/home", { replace: true });
-  }, [account, inProgress, instance, loginStaff, navigate]);
+        const { allowed, reason } = isAccountAllowed(claims, user.email || "");
+        if (!allowed) {
+          setError(reason || "Access denied.");
+          return;
+        }
 
-  const handleSignIn = async () => {
+        loginStaff({
+          email: user.email || "",
+          name: user.name || user.email || "Staff User",
+          picture:
+            user.picture ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              user.name || user.email || "Staff User"
+            )}&size=200`,
+          user_id: user.user_id || user.email || user.sub || "staff",
+        });
+
+        navigate("/home", { replace: true });
+      } catch (e) {
+        const detail =
+          e?.response?.data?.detail ||
+          e?.message ||
+          "Sign-in failed while exchanging the authorization code.";
+        setError(String(detail));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    exchangeCode();
+  }, [callbackData, location.pathname, loginStaff, navigate]);
+
+  const handleSignIn = () => {
     setError(null);
     if (!isAadConfigured) {
-      setError(
-        "Staff/Admin sign-in is not configured. Set REACT_APP_AAD_CLIENT_ID."
-      );
+      setError("Staff/Admin sign-in is not configured. Set REACT_APP_AAD_CLIENT_ID.");
       return;
     }
-    try {
-      await instance.loginRedirect(loginRequest);
-    } catch (e) {
-      const message =
-        (e && typeof e === "object" && "message" in e && e.message) ||
-        "Sign-in request failed.";
-      setError(String(message));
-    }
+    window.location.assign(buildLtiUrl("/lti/staff/login"));
   };
 
   const handleSignOut = async () => {
     setError(null);
     try {
-      await instance.logoutRedirect();
+      await logout();
     } catch (e) {
       console.error("Logout error:", e);
     }
@@ -152,16 +190,16 @@ export default function StaffEntry() {
             type="button"
             onClick={handleSignIn}
             className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            disabled={inProgress !== InteractionStatus.None}
+            disabled={isLoading}
           >
-            Sign in with Microsoft
+            {isLoading ? "Signing in..." : "Sign in with Microsoft"}
           </button>
 
           <button
             type="button"
             onClick={handleSignOut}
             className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            disabled={inProgress !== InteractionStatus.None}
+            disabled={isLoading}
           >
             Sign out
           </button>

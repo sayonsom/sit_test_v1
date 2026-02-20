@@ -37,3 +37,15 @@ class CourseInfo(BaseModel):
     course_section: str
     course_offering_sourcedid: Optional[str] = ""
     context_type: List[str] = []
+
+
+class StaffCodeExchangeRequest(BaseModel):
+    """Request model for staff code exchange"""
+    code: str
+    state: str
+
+
+class StaffCodeExchangeResponse(BaseModel):
+    """Response model for staff code exchange"""
+    user: Dict[str, Any]
+    claims: Dict[str, Any]

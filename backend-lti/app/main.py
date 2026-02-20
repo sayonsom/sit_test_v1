@@ -12,7 +12,8 @@ from typing import Optional
 from .config import settings
 from .lti_handler import LTIHandler
 from .session_manager import SessionManager
-from .models import SessionResponse, LogoutRequest
+from .models import SessionResponse, LogoutRequest, StaffCodeExchangeRequest, StaffCodeExchangeResponse
+from .staff_oidc_handler import StaffOIDCHandler
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +41,7 @@ app.add_middleware(
 # Initialize LTI Handler and Session Manager
 lti_handler = LTIHandler()
 session_manager = SessionManager()
+staff_oidc_handler = StaffOIDCHandler()
 
 
 async def sync_student_to_backend(user_data: dict) -> bool:
@@ -201,6 +203,39 @@ async def lti_launch(
         logger.error(f"Error in LTI launch: {str(e)}", exc_info=True)
         error_url = f"{settings.FRONTEND_URL}/lti-required?error=launch_failed"
         return RedirectResponse(url=error_url, status_code=302)
+
+
+@app.get("/lti/staff/login")
+async def staff_login():
+    """
+    Start staff/admin OIDC login.
+    Uses server-generated state/PKCE and redirects user to IdP authorize endpoint.
+    """
+    try:
+        auth_url = await staff_oidc_handler.build_authorization_url()
+        return RedirectResponse(url=auth_url, status_code=302)
+    except ValueError as e:
+        logger.error(f"Staff login configuration error: {str(e)}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/staff?error=staff_not_configured", status_code=302)
+    except Exception as e:
+        logger.error(f"Error starting staff login: {str(e)}", exc_info=True)
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/staff?error=staff_login_failed", status_code=302)
+
+
+@app.post("/lti/staff/exchange", response_model=StaffCodeExchangeResponse)
+async def staff_exchange(payload: StaffCodeExchangeRequest):
+    """
+    Exchange authorization code server-side (BFF) to avoid browser CORS to IdP token endpoint.
+    """
+    try:
+        user, claims = await staff_oidc_handler.exchange_code(code=payload.code, state=payload.state)
+        return StaffCodeExchangeResponse(user=user, claims=claims)
+    except ValueError as e:
+        logger.error(f"Staff code exchange failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected staff code exchange error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Staff sign-in failed")
 
 
 @app.get("/lti/session/validate")

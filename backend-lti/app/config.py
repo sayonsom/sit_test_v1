@@ -46,7 +46,34 @@ class Settings(BaseSettings):
     
     # Backend API (for creating/syncing students)
     BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
-    
+
+    # Staff/Admin OIDC (server-side exchange to avoid browser CORS on ADFS token endpoint)
+    STAFF_OIDC_CLIENT_ID: str = os.getenv("STAFF_OIDC_CLIENT_ID", "")
+    STAFF_OIDC_AUTHORITY: str = os.getenv("STAFF_OIDC_AUTHORITY", "")
+    STAFF_OIDC_REDIRECT_URI: str = os.getenv("STAFF_OIDC_REDIRECT_URI", "")
+    STAFF_OIDC_SCOPES: str = os.getenv("STAFF_OIDC_SCOPES", "openid")
+    STAFF_OIDC_METADATA_URL: str = os.getenv("STAFF_OIDC_METADATA_URL", "")
+
+    @property
+    def staff_oidc_scopes_list(self) -> List[str]:
+        raw = self.STAFF_OIDC_SCOPES.replace(",", " ")
+        values = [item.strip() for item in raw.split(" ") if item.strip()]
+        return values if values else ["openid"]
+
+    @property
+    def staff_oidc_redirect_uri(self) -> str:
+        if self.STAFF_OIDC_REDIRECT_URI:
+            return self.STAFF_OIDC_REDIRECT_URI
+        return f"{self.FRONTEND_URL.rstrip('/')}/oauth2/callback"
+
+    @property
+    def staff_oidc_metadata_url(self) -> str:
+        if self.STAFF_OIDC_METADATA_URL:
+            return self.STAFF_OIDC_METADATA_URL
+        if not self.STAFF_OIDC_AUTHORITY:
+            return ""
+        return f"{self.STAFF_OIDC_AUTHORITY.rstrip('/')}/.well-known/openid-configuration"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

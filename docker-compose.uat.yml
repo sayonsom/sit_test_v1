@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   virtuallab:
     build: .
@@ -50,6 +48,12 @@ services:
 
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - BACKEND_API_URL=${BACKEND_API_URL}
+
+      # Staff/Admin OIDC via backend (BFF)
+      - STAFF_OIDC_CLIENT_ID=${REACT_APP_AAD_CLIENT_ID:-}
+      - STAFF_OIDC_AUTHORITY=${REACT_APP_AAD_AUTHORITY:-}
+      - STAFF_OIDC_REDIRECT_URI=${REACT_APP_AAD_REDIRECT_URI:-}
+      - STAFF_OIDC_SCOPES=${REACT_APP_AAD_SCOPES:-openid}
 
       - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
