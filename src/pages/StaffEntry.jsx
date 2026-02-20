@@ -53,19 +53,26 @@ export default function StaffEntry() {
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
-    const errorCode = query.get("error");
-    const errorDescription = query.get("error_description");
-    const clientRequestId = query.get("client-request-id") || query.get("client_request_id");
+    const hash = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+
+    const getParam = (key) => query.get(key) || hash.get(key);
+
+    const errorCode = getParam("error");
+    const errorDescription = getParam("error_description");
+    const clientRequestId = getParam("client-request-id") || getParam("client_request_id");
 
     if (!errorCode && !errorDescription && !clientRequestId) return;
 
     const parts = [];
     if (errorCode) parts.push(`Sign-in failed (${errorCode}).`);
     if (errorDescription) parts.push(errorDescription);
+    if (!errorCode && !errorDescription && clientRequestId) {
+      parts.push("Sign-in failed at identity provider.");
+    }
     if (clientRequestId) parts.push(`Request ID: ${clientRequestId}`);
 
     setError(parts.join(" "));
-  }, [location.search]);
+  }, [location.hash, location.search]);
 
   useEffect(() => {
     if (!isAadConfigured) return;
