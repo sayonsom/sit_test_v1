@@ -9,60 +9,26 @@ export default function QuizResults() {
 
     const apiUrl = API_URL;
 
-    // const { isAuthenticated, user } = useAuth0();
-    const [quizData, setQuizData] = useState(null);
     const [modulesData, setModulesData] = useState([]);
-    // const [StudentID, setStudentID] = useState(null);
 
-    // Function to fetch quiz data
-    // const getQuizData = async (StudentID) => {
-    //     try {
-    //     const response = await fetch(`${apiUrl}/students/${StudentID}/assignments/responses`);
-
-    //     if (!response.ok) {
-    //         throw new Error(`HTTP error! Status: ${response.status}`);
-    //     }
-    //     const data = await response.json();
-    //     return data; // This should be an array of modules with assignments
-    //     } catch (error) {
-    //     console.error("Fetching quiz data failed:", error);
-    //     }
-    // };
-
-    // user data from LTI
     const { user } = useLTI();
 
-    // Get StudentID from session storage (set by LTI context)
-    const StudentID = sessionStorage.getItem("StudentID");
+    const studentId = sessionStorage.getItem("StudentID");
 
-    // Get quiz data
-useEffect(() => {
-    if (StudentID) {
-      getQuizData(StudentID).then((data) => {
-        // Assuming the fetched data is an array of modules like shown in the screenshot
-        setModulesData(data); // Here you set the modules data instead of quizData
-        console.log("Modules Quiz data", data);
-      }).catch((error) => {
-        console.error("Failed to fetch quiz data:", error);
-        // Handle error state here. Maybe setModulesData to an empty array or show a message.
-      });
-    }
-  }, [StudentID]);
-  
-  // Assuming getQuizData is defined like this:
-  const getQuizData = async (studentId) => {
-    try {
-      const response = await axios.get(`${apiUrl}/students/${StudentID}/assignments/responses`);
-      if (response.status === 200) {
-        return response.data; // Should be the array of modules
-      } else {
-        throw new Error(`Received status code ${response.status}`);
+    const getQuizData = async (id) => {
+      const response = await axios.get(`${apiUrl}/students/${id}/assignments/responses`);
+      return response.data;
+    };
+
+    useEffect(() => {
+      if (studentId) {
+        getQuizData(studentId).then((data) => {
+          setModulesData(data);
+        }).catch((error) => {
+          console.error("Failed to fetch quiz data:", error);
+        });
       }
-    } catch (error) {
-      console.error("Error fetching quiz data", error);
-      throw error; // Re-throw the error to be handled in the calling code
-    }
-  };
+    }, [studentId]);
   
 
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Component } from "react";
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import AppLayout from "./AppLayout";
@@ -15,6 +15,24 @@ import ExperimentFormParameteric from "../components/ExperimentFormParameteric";
 import ModuleAssignmentsForm from "../components/ModuleAssignmentsForm";
 import VideoCard from "../components/VideoCard";
 import { API_URL } from "../env";
+
+class ModelErrorBoundary extends Component {
+    constructor(props) { super(props); this.state = { hasError: false }; }
+    static getDerivedStateFromError() { return { hasError: true }; }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                        <p className="text-lg font-medium">3D model could not be loaded</p>
+                        <p className="text-sm mt-2">The model file may not be available in this environment.</p>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 const apiUrl = API_URL;
 
@@ -32,6 +50,7 @@ export default function ModuleDetailPage() {
     const [rephraseCount, setRephraseCount] = useState(0);
     const [funfactCount, setFunFactCount] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [selectedTab, setSelectedTab] = useState(0);
     const modelContainerRef = useRef(null);
 
     const triggerConfetti = () => {
@@ -155,7 +174,7 @@ export default function ModuleDetailPage() {
                 </div>
 
                 <div className="font-sans px-6 md:px-8 mt-10">
-                    <Tab.Group defaultIndex={1}>
+                    <Tab.Group defaultIndex={0} onChange={(index) => setSelectedTab(index)}>
                         <Tab.List className="flex space-x-1 rounded-t-lg bg-gray-100 dark:bg-gray-800 p-1">
                             <Tab className={({ selected }) =>
                                 classNames(
@@ -231,19 +250,25 @@ export default function ModuleDetailPage() {
                             </Tab.Panel>
 
                             <Tab.Panel className="bg-white dark:bg-gray-800 p-4 rounded-b-lg" ref={modelContainerRef} style={{ height: '80vh', position: 'relative' }}>
-                                <ModuleViewer url={module.interactive_file} />
-                                <Button
-                                    size="xs"
-                                    onClick={toggleFullscreen}
-                                    className="absolute top-2 right-2 z-10"
-                                    gradientDuoTone="purpleToPink"
-                                >
-                                    {isFullscreen ? (
-                                        <ArrowsPointingInIcon className="h-5 w-5" />
-                                    ) : (
-                                        <ArrowsPointingOutIcon className="h-5 w-5" />
-                                    )}
-                                </Button>
+                                {selectedTab === 1 && (
+                                    <>
+                                        <ModelErrorBoundary>
+                                            <ModuleViewer url={module.interactive_file} />
+                                        </ModelErrorBoundary>
+                                        <Button
+                                            size="xs"
+                                            onClick={toggleFullscreen}
+                                            className="absolute top-2 right-2 z-10"
+                                            gradientDuoTone="purpleToPink"
+                                        >
+                                            {isFullscreen ? (
+                                                <ArrowsPointingInIcon className="h-5 w-5" />
+                                            ) : (
+                                                <ArrowsPointingOutIcon className="h-5 w-5" />
+                                            )}
+                                        </Button>
+                                    </>
+                                )}
                             </Tab.Panel>
 
                            

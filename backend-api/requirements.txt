@@ -1,0 +1,15 @@
+fastapi==0.103.2
+uvicorn[standard]
+gunicorn
+jinja2
+python-multipart
+pydantic==1.9.0
+email-validator
+python-jose[cryptography]
+openai>=1.0.0
+httpx
+asyncpg
+pandas
+aiofiles
+requests
+python-dotenv

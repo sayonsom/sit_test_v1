@@ -1,6 +1,5 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { CallbackPage } from "./pages/callback-page";
 import LandingPage from "./pages/LandingPage";
 import NotInDemo from "./pages/NotInDemo";
 import Home from "./pages/Home";
@@ -78,7 +77,6 @@ export const App = () => {
       <Route path="/oauth2/callback" element={<StaffEntry />} />
       <Route path="/lti-required" element={<LtiRequired />} />
       <Route path="/" element={<LandingPage />} />
-      <Route path="/callback" element={<CallbackPage />} />
       <Route path="*" element={<NotInDemo />} />
     </Routes>
   );

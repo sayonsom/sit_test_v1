@@ -14,12 +14,6 @@ export const LTI_API_URL =
   nonEmpty(runtimeEnv.REACT_APP_LTI_API_URL) ??
   nonEmpty(process.env.REACT_APP_LTI_API_URL) ??
   (typeof window !== "undefined" ? window.location.origin : undefined);
-export const AUTH0_DOMAIN =
-  nonEmpty(runtimeEnv.REACT_APP_AUTH0_DOMAIN) ??
-  nonEmpty(process.env.REACT_APP_AUTH0_DOMAIN);
-export const AUTH0_CLIENT_ID =
-  nonEmpty(runtimeEnv.REACT_APP_AUTH0_CLIENT_ID) ??
-  nonEmpty(process.env.REACT_APP_AUTH0_CLIENT_ID);
 export const MAPS_API =
   nonEmpty(runtimeEnv.REACT_APP_MAPS_API) ?? nonEmpty(process.env.REACT_APP_MAPS_API);
 

@@ -60,22 +60,29 @@ export default function ModuleAssignmentsForm ( {moduleID} ){
     event.preventDefault();
 
     // Check if all questions have been attempted
-    const allQuestionsAttempted = moduleAssignments.every((assignment) => 
-      assignment.questions.every((question) => 
+    const allQuestionsAttempted = moduleAssignments.every((assignment) =>
+      assignment.questions.every((question) =>
         responses[assignment.assignment_id]?.hasOwnProperty(question.question_id)
       )
     );
 
     if (!allQuestionsAttempted) {
       alert('Please answer all questions before submitting.');
-      return; // Prevent the submission if not all questions have been attempted
+      return;
     }
 
     setIsSubmitting(true);
-    // Read StudentID from the session storage 
-    const studentId = sessionStorage.getItem('StudentID');
+    setAnyError(false);
 
-    // Loop over the responses object and send each response to the API
+    const studentId = parseInt(sessionStorage.getItem('StudentID'), 10);
+    if (!studentId || isNaN(studentId)) {
+      alert('Unable to identify student. Please reload the page and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    let hadError = false;
+
     for (const [assignmentId, questions] of Object.entries(responses)) {
         for (const [questionId, responseValue] of Object.entries(questions)) {
             try {
@@ -85,31 +92,30 @@ export default function ModuleAssignmentsForm ( {moduleID} ){
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        student_id: studentId, // Include the student ID in the body
-                        response_text: responseValue // Send the actual response text
+                        student_id: studentId,
+                        response_text: String(responseValue)
                     })
                 });
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                
+
             } catch (error) {
                 console.error('There was a problem saving the response:', error);
-                alert('An error occurred. Please try again.');
-                setAnyError(true);
-            } finally {
-                setIsSubmitting(false);
+                hadError = true;
             }
-
         }
     }
 
-    // After all responses have been sent, if anyError is still false, show a success message
-    if (!anyError) {
+    setIsSubmitting(false);
+
+    if (hadError) {
+        setAnyError(true);
+        alert('Some responses could not be saved. Please try again.');
+    } else {
         alert('Your responses have been submitted successfully! Thank you.');
     }
-    
 };
 
   // Return early if data is not yet fetched

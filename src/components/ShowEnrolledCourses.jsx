@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Badge } from 'flowbite-react';
 import Spinner from './Spinner';
+import { useLTI } from "../contexts/LTIContext";
 import { API_URL } from "../env";
 
 const apiUrl = API_URL;
@@ -9,9 +10,10 @@ const apiUrl = API_URL;
 const ShowEnrolledCourses = () => {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useLTI();
 
-  // grab the email from the local storage
-  const email = sessionStorage.getItem('HVLABuserEmail');
+  // Try sessionStorage first, fall back to LTI context user email
+  const email = sessionStorage.getItem('HVLABuserEmail') || user?.email;
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -27,6 +29,8 @@ const ShowEnrolledCourses = () => {
 
     if (email) {
       fetchCourses();
+    } else {
+      setIsLoading(false);
     }
   }, [email]);
 

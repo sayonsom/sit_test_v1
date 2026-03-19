@@ -45,3 +45,13 @@ yarn-error.log*
 sithvl-scorm-package/
 sithvl-scorm-package2/
 *.zip
+
+# Screenshots (delivery artifacts — share separately)
+screenshots/
+
+# Backend API Python cache
+backend-api/__pycache__/
+backend-api/**/__pycache__/
+backend-api/venv/
+backend-api/.venv/
+backend-api/local_storage/

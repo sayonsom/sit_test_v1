@@ -86,7 +86,7 @@ export default function Home() {
 
       const recordLogin = async (email) => {
         try {
-          await axios.post(`${apiUrl}/students/logins`, { email });
+          await axios.put(`${apiUrl}/students/${email}/login`);
         } catch (error) {
           console.error('Error recording login:', error);
         }

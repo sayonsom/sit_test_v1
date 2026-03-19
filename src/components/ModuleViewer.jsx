@@ -70,19 +70,29 @@ function ModuleViewer({ url }) {
     return null;
   };
 
+  if (error) {
+    return (
+      <div className="relative w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
+        <div className="text-center text-gray-500 dark:text-gray-300">
+          <p className="text-lg font-medium">3D model could not be loaded</p>
+          <p className="text-sm mt-2">The model file may not be available in this environment.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full">
       <Button className="absolute top-4 right-4">
         View in AR/VR
         <TbAugmentedReality2 className="ml-2" />
       </Button>
-      
+
       <Canvas shadows dpr={[1, 2]} camera={{ fov: 50 }}>
         <Suspense
           fallback={
             <mesh position-y={0.5} scale={[2, 3, 2]}>
               <boxGeometry args={[1, 1, 1, 2, 2, 2]} />
-              {/* <meshBasicMaterial wireframe color="red" /> */}
             </mesh>
           }>
           <Stage controls={ref} preset="rembrandt" intensity={1} environment="city">
