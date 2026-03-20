@@ -100,16 +100,15 @@ services:
   # PostgreSQL
   # ──────────────────────────────────────────────
   postgres:
-    image: postgres:13
+    build:
+      context: ./backend-api/sql
+      dockerfile: Dockerfile.postgres
     environment:
       POSTGRES_DB: aligndb
       POSTGRES_USER: alignuser
       POSTGRES_PASSWORD: alignpass
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Schema + seed data run on first init only
-      - ./backend-api/sql/CreateInitialTables.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./backend-api/sql/SeedData.sql:/docker-entrypoint-initdb.d/02_seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U alignuser -d aligndb"]
       interval: 10s
