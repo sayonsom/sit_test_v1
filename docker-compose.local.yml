@@ -94,6 +94,7 @@ services:
     volumes:
       - local_storage_data:/code/local_storage
       - ./3d_models:/3d_models_src:ro
+      - ./content_files:/content_files_src:ro
     restart: unless-stopped
 
   # ──────────────────────────────────────────────

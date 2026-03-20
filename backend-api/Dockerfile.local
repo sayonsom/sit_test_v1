@@ -70,6 +70,17 @@ if [ -d /3d_models_src ]; then\n\
   >&2 echo "3D models seeded into $BUCKET_DIR"\n\
 fi\n\
 \n\
+# Seed content files (theory markdown, experiment configs, compute JS)\n\
+if [ -d /content_files_src ]; then\n\
+  BUCKET_DIR="$LOCAL_STORAGE_PATH/$STORAGE_BUCKET_NAME"\n\
+  for exp_dir in /content_files_src/*/; do\n\
+    exp_name=$(basename "$exp_dir")\n\
+    mkdir -p "$BUCKET_DIR/$exp_name"\n\
+    cp -rn "$exp_dir"* "$BUCKET_DIR/$exp_name/" 2>/dev/null || true\n\
+  done\n\
+  >&2 echo "Content files seeded into $BUCKET_DIR"\n\
+fi\n\
+\n\
 >&2 echo "Starting server"\n\
 exec $cmd' > /wait-for-postgres.sh && chmod +x /wait-for-postgres.sh
 
