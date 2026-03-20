@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import AppLayout from "./AppLayout";
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid'
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 import CourseDetailsColumn from "../components/CourseDetailsColumn";
 import CourseModulesColumn from "../components/CourseModulesColumn";
 import Spinner from "../components/Spinner";
+import { useLTI } from "../contexts/LTIContext";
 import { API_URL } from "../env";
 
 const apiUrl = API_URL;
@@ -14,6 +16,8 @@ export default function CourseDetailsPage() {
     const { courseShortCode } = useParams();
   const [course, setCourse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { authMethod } = useLTI();
+  const isStaff = authMethod === 'staff';
 
   useEffect(() => {
     const fetchCourseDetails = async () => {
@@ -55,8 +59,18 @@ export default function CourseDetailsPage() {
 
             {/* div to show the title of the course */}
             <div className="px-4 py-10 sm:px-6 lg:px-8 lg:py-6">
-                <h1 className="font-heading text-4xl text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight dark:text-white">{course.title} </h1>
-                {/* <Badge color="pink">{offering_institute}</Badge> */}
+                <div className="flex items-center justify-between">
+                    <h1 className="font-heading text-4xl text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight dark:text-white">{course.title} </h1>
+                    {isStaff && (
+                        <Link
+                            to={`/manage/course/${course.course_id}`}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                            <WrenchScrewdriverIcon className="h-4 w-4" />
+                            Manage Course
+                        </Link>
+                    )}
+                </div>
                 <div className="font-sans mt-4 max-w-4xl text-xl text-gray-700 dark:text-gray-400">
                     <p>{course.description}</p>
                 </div>

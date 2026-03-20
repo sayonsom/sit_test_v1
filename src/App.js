@@ -10,7 +10,9 @@ import AppEntry from "./pages/AppEntry";
 import LtiRequired from "./pages/LtiRequired";
 import Dashboard from "./pages/Dashboard";
 import StaffEntry from "./pages/StaffEntry";
+import ManageCoursePage from "./pages/ManageCoursePage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StaffRoute from "./components/StaffRoute";
 
 
 export const App = () => {
@@ -71,6 +73,14 @@ export const App = () => {
           <ProtectedRoute>
             <Dashboard />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manage/course/:courseId"
+        element={
+          <StaffRoute>
+            <ManageCoursePage />
+          </StaffRoute>
         }
       />
       <Route path="/staff" element={<StaffEntry />} />

@@ -22,7 +22,7 @@ import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
 import AdBanner from '../components/AdBanner'
 import DarkModeToggle from '../components/DarkModeToggle'
 
-const navigation = [
+const baseNavigation = [
   { name: 'Home', href: '/home', icon: HomeIcon, current: true },
   { name: 'My Submissions', href: '/results', icon: PencilIcon, current: false },
   { name: 'Tech Help', href: '/contact', icon: PhoneArrowUpRightIcon, current: false },
@@ -37,7 +37,12 @@ function classNames(...classes) {
 
 export default function AppLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, logout, isAuthenticated, isLoading } = useLTI();
+  const { user, logout, isAuthenticated, isLoading, authMethod } = useLTI();
+
+  const navigation = [
+    ...baseNavigation,
+    ...(authMethod === 'staff' ? [{ name: 'Manage', href: '/home', icon: WrenchScrewdriverIcon, current: false }] : []),
+  ];
   const [userFullName, setUserFullName] = useState(null);
   const [userPhoto, setUserPhoto] = useState(null);
 

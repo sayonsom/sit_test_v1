@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Path
+from fastapi import APIRouter, HTTPException, Depends, Path, UploadFile, File, Form
 from uuid import UUID
 import openai
 from openai import AsyncOpenAI
@@ -7,6 +7,7 @@ from typing import List, Dict
 from ....schemas.schemas import ModuleCreate, ModuleInDBBase
 from ....crud.modules import create_module, get_modules_for_course, get_module_by_id, get_module_assignments, update_module, delete_module, get_questions_and_options_by_module
 from ....db.connection import get_db_connection
+from ....storage.local_storage import get_local_storage
 import random
 import os
 
@@ -119,3 +120,20 @@ async def get_questions_endpoint(module_id: UUID = Path(..., title="The UUID of 
         return questions_and_options
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+# Endpoint to upload content files (markdown, JSON configs, JS compute scripts, 3D models)
+@router.post("/upload-content/")
+async def upload_content_file(
+    file: UploadFile = File(...),
+    folder: str = Form(...),
+):
+    try:
+        storage = get_local_storage()
+        bucket_name = os.environ.get("STORAGE_BUCKET_NAME", "align-hvl-2024-release1")
+        blob_name = f"{folder}/{file.filename}"
+        file_data = await file.read()
+        storage.upload_file(bucket_name, blob_name, file_data)
+        return {"path": blob_name, "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")

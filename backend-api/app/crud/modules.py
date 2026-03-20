@@ -47,10 +47,10 @@ async def create_module(conn: Connection, course_id: int, module: ModuleCreate) 
     module_id = uuid4()  # Generate a new UUID for the module
     logger.info(f"Generated module_id: {module_id}")
     sql_command = """
-        INSERT INTO modules (course_id, title, description, theory, plottingexperimentconfig, InteractiveConfig, concept, fun_fact, attachment_1_link, attachment_2_link, attachment_3_link, video_link_1, video_link_2, module_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        INSERT INTO modules (course_id, title, description, theory, plottingexperimentconfig, InteractiveConfig, concept, fun_fact, interactive_file, attachment_1_link, attachment_2_link, attachment_3_link, video_link_1, video_link_2, module_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     """
-    await conn.execute(sql_command, course_id, module.title, module.description, module.theory, module.plottingexperimentconfig, module.InteractiveConfig, module.concept, module.fun_fact, module.attachment_1_link, module.attachment_2_link, module.attachment_3_link, module.video_link_1, module.video_link_2, str(module_id))
+    await conn.execute(sql_command, course_id, module.title, module.description, module.theory, module.plottingexperimentconfig, module.InteractiveConfig, module.concept, module.fun_fact, module.interactive_file, module.attachment_1_link, module.attachment_2_link, module.attachment_3_link, module.video_link_1, module.video_link_2, str(module_id))
     duedate = datetime.now().date() + timedelta(days=90)
     # assignment = AssignmentCreate(module_id=module_id, assignment_title="Default Assignment", description="Basic questions to demonstrate fundamental understanding of the topic", due_date=duedate)
     # await create_assignment(conn, module_id=module_id, assignment_title="Default Assignment", description="Basic questions to demonstrate fundamental understanding of the topic", due_date=duedate)
@@ -106,10 +106,13 @@ async def update_module(conn: Connection, module_id: UUID, module: ModuleCreate)
 
     sql_update = """
         UPDATE Modules
-        SET title = $1, description = $2, theory = $3, concept = $4, fun_fact = $5, attachment_1_link = $6, attachment_2_link = $7, attachment_3_link = $8, video_link_1 = $9, video_link_2 = $10
-        WHERE module_id = $11
+        SET title = $1, description = $2, theory = $3, concept = $4, fun_fact = $5,
+            attachment_1_link = $6, attachment_2_link = $7, attachment_3_link = $8,
+            video_link_1 = $9, video_link_2 = $10,
+            plottingexperimentconfig = $11, InteractiveConfig = $12, interactive_file = $13
+        WHERE module_id = $14
     """
-    await conn.execute(sql_update, module.title, module.description, module.theory, module.concept, module.fun_fact, module.attachment_1_link, module.attachment_2_link, module.attachment_3_link, module.video_link_1, module.video_link_2, str(module_id))
+    await conn.execute(sql_update, module.title, module.description, module.theory, module.concept, module.fun_fact, module.attachment_1_link, module.attachment_2_link, module.attachment_3_link, module.video_link_1, module.video_link_2, module.plottingexperimentconfig, module.InteractiveConfig, module.interactive_file, str(module_id))
     return {"module_id": module_id, **module.dict()}
 
 async def delete_module(conn: Connection, module_id: UUID) -> Dict[str, Any]:
