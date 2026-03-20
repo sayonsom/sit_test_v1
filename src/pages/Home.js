@@ -14,7 +14,7 @@ const apiUrl = API_URL;
 export default function Home() {
   const [isUserCheckComplete, setIsUserCheckComplete] = useState(false);
   const [showModal, setShowModal] = useState(true);
-  const { isAuthenticated, user, isLoading: ltiLoading } = useLTI();
+  const { isAuthenticated, user, authMethod, isLoading: ltiLoading } = useLTI();
   const [showFirstTimeUser, setShowFirstTimeUser] = useState(false);
   const [userFullName, setUserFullName] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,14 +34,21 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log("User is authenticated via LTI");
+      console.log("User is authenticated via", authMethod);
       setUserFullName(user.name);
-      
+
       // User data already stored by LTIContext, but ensure sessionStorage compatibility
       if (!sessionStorage.getItem('HVLABuserEmail')) {
         sessionStorage.setItem('HVLABuserEmail', user.email);
         sessionStorage.setItem('HVLABuserFullName', user.name);
         sessionStorage.setItem('StudentID', user.user_id);
+      }
+
+      // Staff users skip student creation/login tracking
+      if (authMethod === 'staff') {
+        setIsLoading(false);
+        setIsUserCheckComplete(true);
+        return;
       }
 
       // Try the test-cors API to see if the server is reachable
@@ -96,7 +103,7 @@ export default function Home() {
     } else {
       console.log("User is not authenticated");
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, authMethod]);
 
   return (
     <AppLayout>

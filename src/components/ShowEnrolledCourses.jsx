@@ -10,15 +10,20 @@ const apiUrl = API_URL;
 const ShowEnrolledCourses = () => {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useLTI();
+  const { user, authMethod } = useLTI();
 
   // Try sessionStorage first, fall back to LTI context user email
   const email = sessionStorage.getItem('HVLABuserEmail') || user?.email;
+  const isStaff = authMethod === 'staff';
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/students/${email}/courses`);
+        // Staff users see all courses; students see only enrolled courses
+        const url = isStaff
+          ? `${apiUrl}/courses`
+          : `${apiUrl}/students/${email}/courses`;
+        const response = await axios.get(url);
         setCourses(response.data);
       } catch (error) {
         console.error('Error fetching courses', error);
@@ -27,12 +32,12 @@ const ShowEnrolledCourses = () => {
       }
     };
 
-    if (email) {
+    if (isStaff || email) {
       fetchCourses();
     } else {
       setIsLoading(false);
     }
-  }, [email]);
+  }, [email, isStaff]);
 
   if (isLoading) {
     return <div><Spinner/></div>;
