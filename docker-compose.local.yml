@@ -47,8 +47,8 @@ services:
       - ISSUER=${ISSUER:-https://xsitestg.singaporetech.edu.sg}
       - AUTHORIZATION_ENDPOINT=${AUTHORIZATION_ENDPOINT:-https://xsitestg.singaporetech.edu.sg/d2l/lti/authenticate}
       - KEY_SET_URL=${KEY_SET_URL:-https://xsitestg.singaporetech.edu.sg/d2l/.well-known/jwks}
-      - TOOL_URL=${SITE_URL:-http://localhost:3000}
-      - FRONTEND_URL=${SITE_URL:-http://localhost:3000}
+      - TOOL_URL=${TOOL_URL:-${SITE_URL:-http://localhost:3000}}
+      - FRONTEND_URL=${FRONTEND_URL:-${SITE_URL:-http://localhost:3000}}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
@@ -56,7 +56,7 @@ services:
       - REDIS_SSL=false
       - SESSION_TTL=${SESSION_TTL:-28800}
       - STATE_TTL=${STATE_TTL:-300}
-      - ALLOWED_ORIGINS=${SITE_URL:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-${SITE_URL:-http://localhost:3000}}
       # Point LTI backend to local API (for student sync)
       - BACKEND_API_URL=http://backend-api:8080/api/v1
       # Staff OIDC (optional)
@@ -64,7 +64,7 @@ services:
       - STAFF_OIDC_AUTHORITY=${REACT_APP_AAD_AUTHORITY:-}
       - STAFF_OIDC_REDIRECT_URI=${REACT_APP_AAD_REDIRECT_URI:-}
       - STAFF_OIDC_SCOPES=${REACT_APP_AAD_SCOPES:-openid}
-      - STAFF_OIDC_POST_LOGOUT_REDIRECT_URI=${SITE_URL:-http://localhost:3000}/staff
+      - STAFF_OIDC_POST_LOGOUT_REDIRECT_URI=${TOOL_URL:-${SITE_URL:-http://localhost:3000}}/staff
       - DEBUG=${DEBUG:-true}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
