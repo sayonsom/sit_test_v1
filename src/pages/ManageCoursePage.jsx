@@ -6,6 +6,7 @@ import {
   TrashIcon,
   PlusIcon,
   ArrowLeftIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import axios from "axios";
 import AppLayout from "./AppLayout";
@@ -110,8 +111,15 @@ export default function ManageCoursePage() {
           </p>
         )}
 
-        {/* Add Module Button */}
-        <div className="flex justify-end mb-6">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 mb-6">
+          <Button
+            color="gray"
+            onClick={() => navigate(`/manage/course/${courseId}/results`)}
+          >
+            <ChartBarIcon className="h-5 w-5 mr-2" />
+            View Student Results
+          </Button>
           <Button
             gradientDuoTone="purpleToPink"
             onClick={() => setEditingModule("new")}

@@ -21,6 +21,11 @@ const toArray = (value) => {
 const isAccountAllowed = (claims, email = "") => {
   const accountEmail = email || claims?.email || claims?.upn || claims?.unique_name || "";
 
+  const allowedEmails = aadRestrictions.allowedEmails || [];
+  if (allowedEmails.length > 0 && !allowedEmails.includes(accountEmail.toLowerCase())) {
+    return { allowed: false, reason: "Your account is not in the allowed staff list." };
+  }
+
   const allowedDomain = normalizeDomain(aadRestrictions.allowedEmailDomain);
   if (allowedDomain && !accountEmail.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`)) {
     return { allowed: false, reason: `Email domain must be @${allowedDomain}.` };

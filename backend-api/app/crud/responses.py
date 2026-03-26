@@ -92,3 +92,101 @@ async def get_student_assignments_responses(conn, student_id: int) -> List[Dict[
     
     # Return the grouped data as a list of modules
     return list(grouped_data.values())
+
+
+async def get_course_student_results(conn, course_id: int) -> List[Dict[str, Any]]:
+    """Get all student quiz results for a course, grouped by student."""
+    query = """
+        SELECT
+            Students.student_id,
+            Students.name AS student_name,
+            Students.email AS student_email,
+            Modules.title AS module_title,
+            Modules.module_id,
+            Assignments.title AS assignment_title,
+            Questions.question_id,
+            Questions.question_text,
+            Questions.question_type,
+            CASE
+                WHEN Questions.question_type = 'multiple_choice' AND studentresponses.response IS NOT NULL
+                    THEN StudentOption.option_text
+                ELSE studentresponses.response
+            END AS student_response,
+            CorrectOption.option_text AS correct_answer_text,
+            CASE
+                WHEN Questions.question_type = 'multiple_choice'
+                    AND studentresponses.response IS NOT NULL
+                    AND studentresponses.response::text = Questions.correct_option_id::text
+                    THEN true
+                ELSE false
+            END AS is_correct
+        FROM
+            studentresponses
+        INNER JOIN
+            Students ON studentresponses.student_id = Students.student_id
+        INNER JOIN
+            Questions ON studentresponses.question_id = Questions.question_id
+        LEFT JOIN
+            Options AS StudentOption
+            ON studentresponses.response::text = StudentOption.option_id::text
+            AND Questions.question_type = 'multiple_choice'
+        LEFT JOIN
+            Options AS CorrectOption
+            ON Questions.correct_option_id::text = CorrectOption.option_id::text
+            AND Questions.correct_option_id IS NOT NULL
+        INNER JOIN
+            Assignments ON Questions.assignment_id = Assignments.assignment_id
+        INNER JOIN
+            Modules ON Assignments.module_id = Modules.module_id
+        WHERE
+            Modules.course_id = $1
+        ORDER BY
+            Students.name,
+            Modules.title,
+            Questions.question_id
+    """
+    results = await conn.fetch(query, course_id)
+
+    # Group by student
+    students = {}
+    for row in results:
+        r = dict(row)
+        sid = r["student_id"]
+        if sid not in students:
+            students[sid] = {
+                "student_id": sid,
+                "student_name": r["student_name"],
+                "student_email": r["student_email"],
+                "modules": {},
+                "total_questions": 0,
+                "correct_answers": 0,
+            }
+        student = students[sid]
+        mod_title = r["module_title"]
+        if mod_title not in student["modules"]:
+            student["modules"][mod_title] = {
+                "module_title": mod_title,
+                "questions": [],
+                "total": 0,
+                "correct": 0,
+            }
+        module = student["modules"][mod_title]
+        module["questions"].append({
+            "question_text": r["question_text"],
+            "student_response": r["student_response"],
+            "correct_answer": r["correct_answer_text"],
+            "is_correct": r["is_correct"],
+        })
+        module["total"] += 1
+        student["total_questions"] += 1
+        if r["is_correct"]:
+            module["correct"] += 1
+            student["correct_answers"] += 1
+
+    # Convert modules dict to list
+    result_list = []
+    for student in students.values():
+        student["modules"] = list(student["modules"].values())
+        result_list.append(student)
+
+    return result_list

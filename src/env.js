@@ -39,3 +39,6 @@ export const AAD_ALLOWED_ROLES =
 export const AAD_ALLOWED_EMAIL_DOMAIN =
   nonEmpty(runtimeEnv.REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN) ??
   nonEmpty(process.env.REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN);
+export const AAD_ALLOWED_EMAILS =
+  nonEmpty(runtimeEnv.REACT_APP_AAD_ALLOWED_EMAILS) ??
+  nonEmpty(process.env.REACT_APP_AAD_ALLOWED_EMAILS);

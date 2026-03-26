@@ -1,5 +1,6 @@
 import {
   AAD_ALLOWED_EMAIL_DOMAIN,
+  AAD_ALLOWED_EMAILS,
   AAD_ALLOWED_GROUP_IDS,
   AAD_ALLOWED_ROLES,
   AAD_AUTHORITY,
@@ -82,6 +83,7 @@ const parseCsv = (value) =>
 
 export const aadRestrictions = {
   allowedEmailDomain: AAD_ALLOWED_EMAIL_DOMAIN || undefined,
+  allowedEmails: parseCsv(AAD_ALLOWED_EMAILS).map((e) => e.toLowerCase()),
   allowedGroupIds: parseCsv(AAD_ALLOWED_GROUP_IDS),
   allowedRoles: parseCsv(AAD_ALLOWED_ROLES),
 };

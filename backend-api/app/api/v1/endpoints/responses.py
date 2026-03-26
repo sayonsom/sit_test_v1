@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Path, Body, Depends
 from typing import List, Dict, Any, Optional
 from ....schemas.schemas import ResponseCreate
-from ....crud.responses import create_student_response, get_student_assignments_responses
+from ....crud.responses import create_student_response, get_student_assignments_responses, get_course_student_results
 from uuid import UUID
 from ....db.connection import get_db_connection
 
@@ -22,6 +22,18 @@ async def save_student_response(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     
+
+@router.get("/courses/{course_id}/student-results", response_model=List[Dict[str, Any]])
+async def read_course_student_results(
+    course_id: int = Path(..., title="The ID of the course"),
+    conn = Depends(get_db_connection)
+):
+    try:
+        results = await get_course_student_results(conn, course_id)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 
 @router.get("/students/{student_id}/assignments/responses", response_model=List[Dict[str, Any]])
 async def read_student_assignments_responses(
