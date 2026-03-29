@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import StaffEntry from "./pages/StaffEntry";
 import ManageCoursePage from "./pages/ManageCoursePage";
 import StudentResultsPage from "./pages/StudentResultsPage";
+import AllResultsPage from "./pages/AllResultsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StaffRoute from "./components/StaffRoute";
 
@@ -74,6 +75,14 @@ export const App = () => {
           <ProtectedRoute>
             <Dashboard />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manage/results"
+        element={
+          <StaffRoute>
+            <AllResultsPage />
+          </StaffRoute>
         }
       />
       <Route

@@ -13,6 +13,7 @@ import {
   ShieldCheckIcon,
   TruckIcon,
   WrenchScrewdriverIcon,
+  ChartBarIcon,
   HomeIcon,
   ServerStackIcon,
   WifiIcon,
@@ -41,7 +42,10 @@ export default function AppLayout({ children }) {
 
   const navigation = [
     ...baseNavigation,
-    ...(authMethod === 'staff' ? [{ name: 'Manage', href: '/home', icon: WrenchScrewdriverIcon, current: false }] : []),
+    ...(authMethod === 'staff' ? [
+      { name: 'Student Results', href: '/manage/results', icon: ChartBarIcon, current: false },
+      { name: 'Manage', href: '/home', icon: WrenchScrewdriverIcon, current: false },
+    ] : []),
   ];
   const [userFullName, setUserFullName] = useState(null);
   const [userPhoto, setUserPhoto] = useState(null);
