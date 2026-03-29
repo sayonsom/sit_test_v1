@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "flowbite-react";
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -22,7 +21,7 @@ export default function StudentResultsPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedStudent, setExpandedStudent] = useState(null);
-  const [expandedModule, setExpandedModule] = useState(null);
+  const [expandedQuiz, setExpandedQuiz] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,12 +44,29 @@ export default function StudentResultsPage() {
 
   const toggleStudent = (studentId) => {
     setExpandedStudent(expandedStudent === studentId ? null : studentId);
-    setExpandedModule(null);
+    setExpandedQuiz(null);
   };
 
-  const toggleModule = (key) => {
-    setExpandedModule(expandedModule === key ? null : key);
+  const toggleQuiz = (key) => {
+    setExpandedQuiz(expandedQuiz === key ? null : key);
   };
+
+  // Compute quiz-level stats
+  const totalQuizzesTaken = results.reduce((sum, s) => sum + s.modules.length, 0);
+  const avgScore =
+    totalQuizzesTaken > 0
+      ? Math.round(
+          results.reduce(
+            (sum, s) =>
+              sum +
+              s.modules.reduce(
+                (mSum, m) => mSum + (m.total > 0 ? (m.correct / m.total) * 100 : 0),
+                0
+              ),
+            0
+          ) / totalQuizzesTaken
+        )
+      : 0;
 
   if (loading) {
     return (
@@ -66,7 +82,7 @@ export default function StudentResultsPage() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-2">
           <button
-            onClick={() => navigate(`/manage/course/${courseId}`)}
+            onClick={() => navigate(-1)}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             <ArrowLeftIcon className="h-5 w-5" />
@@ -85,173 +101,206 @@ export default function StudentResultsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 text-center">
             <p className="text-3xl font-bold text-purple-600">{results.length}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Students Attempted</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Students</p>
           </div>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 text-center">
-            <p className="text-3xl font-bold text-blue-600">
-              {results.reduce((sum, s) => sum + s.total_questions, 0)}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Responses</p>
+            <p className="text-3xl font-bold text-blue-600">{totalQuizzesTaken}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Quizzes Completed</p>
           </div>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 text-center">
-            <p className="text-3xl font-bold text-green-600">
-              {results.length > 0
-                ? Math.round(
-                    (results.reduce((sum, s) => sum + s.correct_answers, 0) /
-                      Math.max(results.reduce((sum, s) => sum + s.total_questions, 0), 1)) *
-                      100
-                  )
-                : 0}
-              %
+            <p className={`text-3xl font-bold ${avgScore >= 70 ? "text-green-600" : avgScore >= 40 ? "text-yellow-600" : "text-red-600"}`}>
+              {avgScore}%
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Average Score</p>
           </div>
         </div>
 
-        {/* No results */}
+        {/* Student Table */}
         {results.length === 0 ? (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">
             <p className="text-lg">No quiz submissions yet.</p>
             <p className="text-sm mt-1">
-              Students will appear here after they take a quiz.
+              Students will appear here after they complete a quiz.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {results.map((student) => {
-              const isExpanded = expandedStudent === student.student_id;
-              const scorePercent =
-                student.total_questions > 0
-                  ? Math.round((student.correct_answers / student.total_questions) * 100)
-                  : 0;
+          <>
+            {/* Table Header */}
+            <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <div className="col-span-5">Student</div>
+              <div className="col-span-3 text-center">Quizzes Completed</div>
+              <div className="col-span-2 text-center">Avg Score</div>
+              <div className="col-span-2 text-center">Status</div>
+            </div>
 
-              return (
-                <div
-                  key={student.student_id}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                >
-                  {/* Student Row */}
-                  <button
-                    onClick={() => toggleStudent(student.student_id)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left"
+            <div className="space-y-2">
+              {results.map((student) => {
+                const isExpanded = expandedStudent === student.student_id;
+                const quizCount = student.modules.length;
+                const studentAvg =
+                  quizCount > 0
+                    ? Math.round(
+                        student.modules.reduce(
+                          (sum, m) => sum + (m.total > 0 ? (m.correct / m.total) * 100 : 0),
+                          0
+                        ) / quizCount
+                      )
+                    : 0;
+
+                return (
+                  <div
+                    key={student.student_id}
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                   >
-                    <div className="flex items-center gap-4">
-                      {isExpanded ? (
-                        <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-                      )}
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          {student.student_name}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {student.student_email}
-                        </p>
+                    {/* Student Row */}
+                    <button
+                      onClick={() => toggleStudent(student.student_id)}
+                      className="w-full grid grid-cols-12 gap-4 items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left"
+                    >
+                      <div className="col-span-12 md:col-span-5 flex items-center gap-3">
+                        {isExpanded ? (
+                          <ChevronDownIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronRightIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">
+                            {student.student_name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {student.student_email}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {student.correct_answers}/{student.total_questions} correct
-                      </span>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          scorePercent >= 70
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                            : scorePercent >= 40
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                        }`}
-                      >
-                        {scorePercent}%
-                      </span>
-                    </div>
-                  </button>
+                      <div className="hidden md:block col-span-3 text-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {quizCount}
+                        </span>
+                      </div>
+                      <div className="hidden md:block col-span-2 text-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {studentAvg}%
+                        </span>
+                      </div>
+                      <div className="hidden md:flex col-span-2 justify-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            studentAvg >= 70
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                              : studentAvg >= 40
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                          }`}
+                        >
+                          {studentAvg >= 70 ? "Good" : studentAvg >= 40 ? "Needs Work" : "At Risk"}
+                        </span>
+                      </div>
+                    </button>
 
-                  {/* Expanded Student Details */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 pb-4">
-                      {student.modules.map((mod) => {
-                        const modKey = `${student.student_id}-${mod.module_title}`;
-                        const isModExpanded = expandedModule === modKey;
-                        const modPercent =
-                          mod.total > 0 ? Math.round((mod.correct / mod.total) * 100) : 0;
+                    {/* Expanded: Quiz breakdown per module */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 dark:border-gray-700 px-4 pb-4">
+                        {/* Mobile summary */}
+                        <div className="md:hidden flex gap-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                          <span>{quizCount} quiz{quizCount !== 1 ? "zes" : ""} completed</span>
+                          <span>Avg: {studentAvg}%</span>
+                        </div>
 
-                        return (
-                          <div key={modKey} className="mt-3">
-                            <button
-                              onClick={() => toggleModule(modKey)}
-                              className="w-full flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-                            >
-                              <div className="flex items-center gap-2">
-                                {isModExpanded ? (
-                                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                                ) : (
-                                  <ChevronRightIcon className="h-4 w-4 text-gray-400" />
-                                )}
-                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                  {mod.module_title}
-                                </span>
-                              </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {mod.correct}/{mod.total} ({modPercent}%)
-                              </span>
-                            </button>
+                        {student.modules.map((mod) => {
+                          const quizKey = `${student.student_id}-${mod.module_title}`;
+                          const isQuizExpanded = expandedQuiz === quizKey;
+                          const quizPercent =
+                            mod.total > 0 ? Math.round((mod.correct / mod.total) * 100) : 0;
 
-                            {isModExpanded && (
-                              <div className="ml-9 mt-2 space-y-2">
-                                {mod.questions.map((q, qi) => (
-                                  <div
-                                    key={qi}
-                                    className="flex items-start gap-3 py-2 px-3 rounded bg-gray-50 dark:bg-gray-700"
+                          return (
+                            <div key={quizKey} className="mt-2">
+                              <button
+                                onClick={() => toggleQuiz(quizKey)}
+                                className="w-full flex items-center justify-between py-3 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                              >
+                                <div className="flex items-center gap-2">
+                                  {isQuizExpanded ? (
+                                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                                  ) : (
+                                    <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+                                  )}
+                                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                    {mod.module_title}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {mod.correct}/{mod.total} correct
+                                  </span>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      quizPercent >= 70
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                        : quizPercent >= 40
+                                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                                        : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                    }`}
                                   >
-                                    {q.is_correct ? (
-                                      <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                    ) : (
-                                      <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm text-gray-800 dark:text-gray-200">
-                                        {q.question_text}
-                                      </p>
-                                      <p className="text-xs mt-1">
-                                        <span className="text-gray-500 dark:text-gray-400">
-                                          Answer:{" "}
-                                        </span>
-                                        <span
-                                          className={
-                                            q.is_correct
-                                              ? "text-green-600 dark:text-green-400"
-                                              : "text-red-600 dark:text-red-400"
-                                          }
-                                        >
-                                          {q.student_response || "(no response)"}
-                                        </span>
-                                      </p>
-                                      {!q.is_correct && q.correct_answer && (
-                                        <p className="text-xs mt-0.5">
+                                    {quizPercent}%
+                                  </span>
+                                </div>
+                              </button>
+
+                              {isQuizExpanded && (
+                                <div className="ml-9 mt-2 space-y-2">
+                                  {mod.questions.map((q, qi) => (
+                                    <div
+                                      key={qi}
+                                      className="flex items-start gap-3 py-2 px-3 rounded bg-gray-50 dark:bg-gray-700"
+                                    >
+                                      {q.is_correct ? (
+                                        <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                      ) : (
+                                        <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-gray-800 dark:text-gray-200">
+                                          {q.question_text}
+                                        </p>
+                                        <p className="text-xs mt-1">
                                           <span className="text-gray-500 dark:text-gray-400">
-                                            Correct:{" "}
+                                            Answer:{" "}
                                           </span>
-                                          <span className="text-green-600 dark:text-green-400">
-                                            {q.correct_answer}
+                                          <span
+                                            className={
+                                              q.is_correct
+                                                ? "text-green-600 dark:text-green-400"
+                                                : "text-red-600 dark:text-red-400"
+                                            }
+                                          >
+                                            {q.student_response || "(no response)"}
                                           </span>
                                         </p>
-                                      )}
+                                        {!q.is_correct && q.correct_answer && (
+                                          <p className="text-xs mt-0.5">
+                                            <span className="text-gray-500 dark:text-gray-400">
+                                              Correct:{" "}
+                                            </span>
+                                            <span className="text-green-600 dark:text-green-400">
+                                              {q.correct_answer}
+                                            </span>
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </AppLayout>
