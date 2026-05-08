@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="LTI 1.3 Backend Service",
     description="Handles LTI 1.3 authentication for SIT Brightspace integration",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs" if settings.ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if settings.ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if settings.ENABLE_API_DOCS else None,
 )
 
 # CORS Configuration
@@ -60,6 +63,10 @@ async def sync_student_to_backend(user_data: dict) -> bool:
         backend_url = settings.BACKEND_API_URL
         
         # Check if student exists
+        service_headers = {}
+        if settings.BACKEND_API_SERVICE_TOKEN:
+            service_headers["X-Service-Token"] = settings.BACKEND_API_SERVICE_TOKEN
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 # Try to get student
@@ -68,7 +75,10 @@ async def sync_student_to_backend(user_data: dict) -> bool:
                 if response.status_code == 200:
                     # Student exists, update login info
                     logger.info(f"Student {email} exists, updating login info")
-                    login_response = await client.put(f"{backend_url}/students/{email}/login")
+                    login_response = await client.put(
+                        f"{backend_url}/students/{email}/login",
+                        headers=service_headers,
+                    )
                     if login_response.status_code == 200:
                         logger.info(f"Updated login info for {email}")
                     return True
@@ -95,7 +105,8 @@ async def sync_student_to_backend(user_data: dict) -> bool:
             
             create_response = await client.post(
                 f"{backend_url}/students/",
-                json=student_data
+                json=student_data,
+                headers=service_headers,
             )
             
             if create_response.status_code in [200, 201]:

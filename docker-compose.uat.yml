@@ -18,8 +18,14 @@ services:
       - REACT_APP_AAD_ALLOWED_GROUP_IDS=${REACT_APP_AAD_ALLOWED_GROUP_IDS:-}
       - REACT_APP_AAD_ALLOWED_ROLES=${REACT_APP_AAD_ALLOWED_ROLES:-}
       - REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=${REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN:-}
+      - REACT_APP_AAD_ALLOWED_EMAILS=${REACT_APP_AAD_ALLOWED_EMAILS:-}
       # Backend API URL used by nginx proxy (envsubst at runtime)
       - BACKEND_API_URL=${BACKEND_API_URL:-https://alignbackendapis-708196257066.asia-southeast1.run.app/api/v1}
+      - ENABLE_DEBUG_ROUTES=${ENABLE_DEBUG_ROUTES:-false}
+      - ENABLE_API_DOCS=false
+      - ENABLE_DEBUG_MODE=false
+      - CSP_FRAME_ANCESTORS=${CSP_FRAME_ANCESTORS:-'self' https://hvlabonline-uat.singaporetech.edu.sg}
+      - CSP_CONNECT_SRC=${CSP_CONNECT_SRC:-'self' https://maps.googleapis.com https://api.mapbox.com https://events.mapbox.com}
     depends_on:
       - lti-backend
     restart: unless-stopped
@@ -48,6 +54,7 @@ services:
 
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - BACKEND_API_URL=${BACKEND_API_URL}
+      - BACKEND_API_SERVICE_TOKEN=${BACKEND_API_SERVICE_TOKEN}
 
       # Staff/Admin OIDC via backend (BFF)
       - STAFF_OIDC_CLIENT_ID=${REACT_APP_AAD_CLIENT_ID:-}
@@ -57,6 +64,7 @@ services:
       - STAFF_OIDC_POST_LOGOUT_REDIRECT_URI=${STAFF_OIDC_POST_LOGOUT_REDIRECT_URI:-}
 
       - DEBUG=${DEBUG:-false}
+      - ENABLE_API_DOCS=${ENABLE_API_DOCS:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
       - redis

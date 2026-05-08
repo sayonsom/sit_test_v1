@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import base64
 import json
+import posixpath
 
 
 class LocalStorage:
@@ -25,6 +26,18 @@ class LocalStorage:
         """
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
+
+    def _safe_path(self, bucket_name: str, blob_name: str) -> Path:
+        if not bucket_name or bucket_name.startswith(("/", "\\")):
+            raise ValueError("Invalid bucket name")
+        normalized_blob = posixpath.normpath(blob_name.replace("\\", "/"))
+        if normalized_blob.startswith("../") or normalized_blob == ".." or normalized_blob.startswith("/"):
+            raise ValueError("Invalid blob path")
+        path = (self.base_path / bucket_name / normalized_blob).resolve()
+        storage_root = self.base_path.resolve()
+        if storage_root not in path.parents and path != storage_root:
+            raise ValueError("Resolved path escapes storage root")
+        return path
     
     def generate_signed_url(
         self, 
@@ -51,7 +64,7 @@ class LocalStorage:
         bucket_path.mkdir(parents=True, exist_ok=True)
         
         # Construct full file path
-        file_path = bucket_path / blob_name
+        file_path = self._safe_path(bucket_name, blob_name)
         
         # In local mode, we return an API endpoint URL that serves the file
         # This mimics the signed URL behavior
@@ -71,7 +84,7 @@ class LocalStorage:
         Returns:
             Full file system path
         """
-        return self.base_path / bucket_name / blob_name
+        return self._safe_path(bucket_name, blob_name)
     
     def file_exists(self, bucket_name: str, blob_name: str) -> bool:
         """

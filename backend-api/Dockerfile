@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Google Cloud SDK
-RUN curl -sSL https://sdk.cloud.google.com | bash
-
 # Set work directory for our application
 WORKDIR /code
 
@@ -23,11 +20,6 @@ WORKDIR /code
 COPY requirements.txt /code/
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
-
-
-
-ENV GOOGLE_APPLICATION_CREDENTIALS=/code/gcloud/keys/align-google-credentials.json
-COPY gcloud/keys/align-google-credentials.json /code/gcloud/keys/align-google-credentials.json
 
 COPY . /code
 

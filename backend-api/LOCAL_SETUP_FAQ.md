@@ -43,7 +43,7 @@ I've created a script that does everything:
 
 It will:
 1. Start PostgreSQL container
-2. Export all data from GCP (35.187.250.181)
+2. Export all data from the approved GCP host in `GCP_HOST`
 3. Import to local PostgreSQL
 4. Verify the migration
 5. Show you a summary
@@ -56,11 +56,11 @@ It will:
 # 1. Start local PostgreSQL
 docker-compose -f docker-compose.local.yml up -d postgres
 
-# 2. Export from GCP (password is already in script)
-PGPASSWORD='lT%vbuvE.{kKd'"'"'_;' pg_dump \
-  -h 35.187.250.181 \
-  -U postgres \
-  -d postgres \
+# 2. Export from GCP (load values from your approved secret store)
+PGPASSWORD="$GCP_PASSWORD" pg_dump \
+  -h "$GCP_HOST" \
+  -U "$GCP_USER" \
+  -d "$GCP_DB" \
   --no-owner \
   --no-acl \
   -f backup.sql
@@ -428,7 +428,7 @@ docker-compose -f docker-compose.local.yml up --build
 ./migrate_gcp_to_local.sh
 
 # Manual export from GCP
-PGPASSWORD='lT%vbuvE.{kKd'"'"'_;' pg_dump -h 35.187.250.181 -U postgres -d postgres -f backup.sql
+PGPASSWORD="$GCP_PASSWORD" pg_dump -h "$GCP_HOST" -U "$GCP_USER" -d "$GCP_DB" -f backup.sql
 
 # Manual import to local
 cat backup.sql | docker-compose -f docker-compose.local.yml exec -T postgres psql -U alignuser -d aligndb

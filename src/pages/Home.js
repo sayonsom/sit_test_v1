@@ -51,35 +51,13 @@ export default function Home() {
         return;
       }
 
-      // Try the test-cors API to see if the server is reachable
-      axios.get(`${apiUrl}/test-cors`)
-        .then(response => {
-          console.log('API is reachable:', response.data);
-        })
-        .catch(error => {
-          console.error('API is not reachable:', error);
-        });
-
-      const fetchOrCreateStudent = async (email) => {
+      const fetchStudent = async (email) => {
         try {
           const response = await axios.get(`${apiUrl}/student-id/${email}`);
           sessionStorage.setItem("StudentID", response.data);
-          await recordLogin(email); // Record login if user exists
         } catch (error) {
           if (error.response && error.response.status === 404) {
-            try {
-              const response = await axios.post(`${apiUrl}/students/`, {
-                name: user.name,
-                email: user.email,
-                date_of_birth: "1999-01-01",
-                profile_picture: user.picture,
-                location: "Somewhere on Earth"
-              });
-              sessionStorage.setItem("StudentID", response.data.student_id);
-              await recordLogin(user.email); // Record login for new user
-            } catch (postError) {
-              console.error('Error creating new student:', postError);
-            }
+            console.error('Student record was not created by the LTI sync service.');
           } else {
             console.error('Error fetching student ID:', error);
           }
@@ -91,15 +69,7 @@ export default function Home() {
         checkUserLogins(email);
       };
 
-      const recordLogin = async (email) => {
-        try {
-          await axios.put(`${apiUrl}/students/${email}/login`);
-        } catch (error) {
-          console.error('Error recording login:', error);
-        }
-      };
-
-      fetchOrCreateStudent(user.email);
+      fetchStudent(user.email);
     } else {
       console.log("User is not authenticated");
     }

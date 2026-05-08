@@ -35,26 +35,38 @@ from app.api.v1.endpoints.session_routes import session as session_router
 import uvicorn
 import os
 
-app = FastAPI()
+ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
+
+app = FastAPI(
+    docs_url="/docs" if ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
+)
 
 # Ensure external scheme/host are derived from X-Forwarded-* headers (Cloud Run, proxies)
 if ProxyHeadersMiddleware is not None:
-    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+    trusted_proxy_hosts = [
+        host.strip()
+        for host in os.getenv("TRUSTED_PROXY_HOSTS", "127.0.0.1,localhost").split(",")
+        if host.strip()
+    ]
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=trusted_proxy_hosts)
 
-# Define a list of allowed origins (i.e., the frontend URLs that you want to allow to access your backend)
+# Define allowed frontend origins. Keep production origins in deployment config.
 origins = [
-    "http://localhost:3000",
-    "http://localhost:3100",
-    "https://virtualhvlab.com",
-    "https://sithvl.vercel.app",
-    "https://hvlabonline-uat.singaporetech.edu.sg",
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:3100,https://hvlabonline-uat.singaporetech.edu.sg",
+    ).split(",")
+    if origin.strip()
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

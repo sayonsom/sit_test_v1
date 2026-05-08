@@ -7,7 +7,7 @@ import os
 from ....schemas.schemas import StudentCreate, StudentUpdate
 from ....storage.local_storage import get_local_storage
 from ....crud.students import get_students, create_student, get_number_of_logins_by_email, delete_student_by_email, enroll_students_in_course,  get_courses_for_student, unenroll_students_from_course, update_student_login_info, get_student_by_email, get_student_id_by_email
-from ....core.auth import validate_jwt, get_current_user
+from ....core.auth import require_service_token, validate_jwt, get_current_user
 from ....db.connection import get_db_connection
 router = APIRouter()
 
@@ -66,7 +66,11 @@ async def read_students(conn = Depends(get_db_connection)):
 
 # Create a new student endpoint
 @router.post("/students/", response_model=dict)
-async def create_student_endpoint(student: StudentCreate, conn: Connection = Depends(get_db_connection)):
+async def create_student_endpoint(
+    student: StudentCreate,
+    conn: Connection = Depends(get_db_connection),
+    _service=Depends(require_service_token),
+):
     try:
         new_student = await create_student(conn, student.name, student.email, student.date_of_birth, student.profile_picture, student.location)
         return new_student
@@ -83,7 +87,11 @@ async def find_student_by_email(email: str, conn: Connection = Depends(get_db_co
 
 # Endpoint to update login info for a student
 @router.put("/students/{email}/login", response_model=dict)
-async def update_student_login_endpoint(email: str = Path(..., description="The Email ID of the student"), conn: Connection = Depends(get_db_connection)):
+async def update_student_login_endpoint(
+    email: str = Path(..., description="The Email ID of the student"),
+    conn: Connection = Depends(get_db_connection),
+    _service=Depends(require_service_token),
+):
     login_info = await update_student_login_info(conn, email)
     if not login_info:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -100,7 +108,11 @@ async def get_student_logins_endpoint(email: str = Path(..., description="The em
 
 # Delete a student by Email
 @router.delete("/students/{email}", response_model=Dict[str, Any])
-async def delete_student_by_email_endpoint(email: str, conn: Connection = Depends(get_db_connection)):
+async def delete_student_by_email_endpoint(
+    email: str,
+    conn: Connection = Depends(get_db_connection),
+    _service=Depends(require_service_token),
+):
     try:
         student = await delete_student_by_email(conn, email)
         return student
@@ -109,7 +121,12 @@ async def delete_student_by_email_endpoint(email: str, conn: Connection = Depend
 
 # Un-enroll students from a course by their email address
 @router.post("/unenroll-from-course/{course_id}/unenroll/", response_model=List[Dict[str, Any]])
-async def unenroll_students_from_course_endpoint(course_id: int, emails: List[str], conn: Connection = Depends(get_db_connection)):
+async def unenroll_students_from_course_endpoint(
+    course_id: int,
+    emails: List[str],
+    conn: Connection = Depends(get_db_connection),
+    _service=Depends(require_service_token),
+):
     try:
         unenrolled_students = await unenroll_students_from_course(conn, course_id, emails)
         return unenrolled_students
@@ -118,7 +135,12 @@ async def unenroll_students_from_course_endpoint(course_id: int, emails: List[st
 
 # Enroll students in a course by their email address
 @router.post("/enroll-in-course/{course_id}/enroll/", response_model=List[Dict[str, Any]])
-async def enroll_students_in_course_endpoint(course_id: int, emails: List[str], conn: Connection = Depends(get_db_connection)):
+async def enroll_students_in_course_endpoint(
+    course_id: int,
+    emails: List[str],
+    conn: Connection = Depends(get_db_connection),
+    _service=Depends(require_service_token),
+):
     try:
         enrolled_students = await enroll_students_in_course(conn, course_id, emails)
         return enrolled_students

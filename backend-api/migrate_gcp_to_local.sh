@@ -10,15 +10,15 @@ echo "  GCP to Local PostgreSQL Migration Script"
 echo "=================================================="
 echo ""
 
-# Configuration
-GCP_HOST="35.187.250.181"
-GCP_USER="postgres"
-GCP_DB="postgres"
-GCP_PASSWORD='lT%vbuvE.{kKd'"'"'_;'
+# Configuration. Set these from a secure shell/session; do not commit real values.
+GCP_HOST="${GCP_HOST:?Set GCP_HOST to the authorized Cloud SQL host}"
+GCP_USER="${GCP_USER:-postgres}"
+GCP_DB="${GCP_DB:-postgres}"
+GCP_PASSWORD="${GCP_PASSWORD:?Set GCP_PASSWORD from the approved secret store}"
 
 LOCAL_USER="alignuser"
 LOCAL_DB="aligndb"
-LOCAL_PASSWORD="alignpass"
+LOCAL_PASSWORD="${LOCAL_PASSWORD:-alignpass}"
 
 BACKUP_FILE="gcp_backup_$(date +%Y%m%d_%H%M%S).sql"
 

@@ -12,12 +12,19 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
+MAX_CSV_UPLOAD_BYTES = 2 * 1024 * 1024
 
 @router.post("/upload_csv/")
-async def upload_csv(file: UploadFile, module_id, conn= Depends(get_db_connection)):
+async def upload_csv(file: UploadFile = File(...), module_id=None, conn= Depends(get_db_connection)):
     try:
+        if not module_id:
+            raise HTTPException(status_code=400, detail="module_id is required")
         contents = await file.read()
-        logging.info(f"Received file with contents: {contents}")
+        if len(contents) > MAX_CSV_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="CSV file too large")
+        if not (file.filename or "").lower().endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Only CSV files are supported")
+        logging.info("Received CSV upload: %s (%d bytes)", file.filename, len(contents))
         df = pd.read_csv(BytesIO(contents))
         duedate = datetime.now().date() + timedelta(days=90)
 

@@ -19,6 +19,10 @@ services:
       - REACT_APP_AAD_ALLOWED_ROLES=${REACT_APP_AAD_ALLOWED_ROLES:-}
       - REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=${REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN:-}
       - REACT_APP_AAD_ALLOWED_EMAILS=${REACT_APP_AAD_ALLOWED_EMAILS:-}
+      - ENABLE_DEBUG_ROUTES=${ENABLE_DEBUG_ROUTES:-false}
+      - ENABLE_API_DOCS=false
+      - ENABLE_DEBUG_MODE=false
+      - CSP_FRAME_ANCESTORS=${CSP_FRAME_ANCESTORS:-'self' https://hvlabonline-uat.singaporetech.edu.sg}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]

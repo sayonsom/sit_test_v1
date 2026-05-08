@@ -5,9 +5,9 @@ This guide explains how to migrate your data from Google Cloud SQL to a local Do
 ## 📋 Overview
 
 ### Current Setup (GCP)
-- **Host**: `35.187.250.181` (Cloud SQL)
-- **Database**: `postgres`
-- **User**: `postgres`
+- **Host**: set `GCP_HOST` from the approved secret store
+- **Database**: set `GCP_DB`
+- **User**: set `GCP_USER`
 - **Port**: `5432`
 
 ### New Setup (Local Docker)
@@ -61,10 +61,10 @@ docker-compose -f docker-compose.local.yml exec postgres pg_isready -U alignuser
 #### Step 2: Export from GCP
 ```bash
 # Using pg_dump (if installed)
-PGPASSWORD='lT%vbuvE.{kKd'"'"'_;' pg_dump \
-  -h 35.187.250.181 \
-  -U postgres \
-  -d postgres \
+PGPASSWORD="$GCP_PASSWORD" pg_dump \
+  -h "$GCP_HOST" \
+  -U "$GCP_USER" \
+  -d "$GCP_DB" \
   --no-owner \
   --no-acl \
   -f gcp_backup.sql
@@ -269,10 +269,10 @@ To verify data integrity, compare record counts:
 
 ### On GCP:
 ```bash
-PGPASSWORD='lT%vbuvE.{kKd'"'"'_;' psql \
-  -h 35.187.250.181 \
-  -U postgres \
-  -d postgres \
+PGPASSWORD="$GCP_PASSWORD" psql \
+  -h "$GCP_HOST" \
+  -U "$GCP_USER" \
+  -d "$GCP_DB" \
   -c "SELECT 'students', COUNT(*) FROM students UNION ALL
       SELECT 'courses', COUNT(*) FROM courses UNION ALL
       SELECT 'instructors', COUNT(*) FROM instructors;"

@@ -4,6 +4,14 @@ import { LTI_API_URL } from "../env";
 
 const LTIContext = createContext();
 
+const setDefaultAuthHeader = (token) => {
+  if (token) {
+    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common.Authorization;
+  }
+};
+
 const resolveLtiUrl = (path) => {
   const base = (LTI_API_URL || "").replace(/\/$/, "");
   if (!base) return path;
@@ -21,11 +29,12 @@ export const LTIProvider = ({ children }) => {
   const [authMethod, setAuthMethod] = useState("none"); // lti | staff | none
 
   useEffect(() => {
-    // Check for session token in localStorage
+    // Check for session token in tab-scoped storage
     const validateSession = async () => {
-      const sessionToken = localStorage.getItem('lti_session_token');
+      const sessionToken = sessionStorage.getItem('lti_session_token');
       
       if (sessionToken) {
+        setDefaultAuthHeader(sessionToken);
         try {
           const response = await axios.get(
             `${LTI_API_URL}/lti/session/validate`,
@@ -40,7 +49,7 @@ export const LTIProvider = ({ children }) => {
           setIsAuthenticated(true);
           setAuthMethod("lti");
           // If a staff session existed, clear it to avoid confusion.
-          localStorage.removeItem('staff_user');
+          sessionStorage.removeItem('staff_user');
           
           console.log('Session validated:', {
             user: response.data.user.email,
@@ -49,9 +58,10 @@ export const LTIProvider = ({ children }) => {
         } catch (error) {
           console.error('Session validation failed:', error);
           // Clear invalid session
-          localStorage.removeItem('lti_session_token');
-          localStorage.removeItem('lti_user');
-          localStorage.removeItem('lti_course');
+          sessionStorage.removeItem('lti_session_token');
+          sessionStorage.removeItem('lti_user');
+          sessionStorage.removeItem('lti_course');
+          setDefaultAuthHeader(null);
           setIsAuthenticated(false);
           setUser(null);
           setCourse(null);
@@ -59,7 +69,7 @@ export const LTIProvider = ({ children }) => {
         }
       } else {
         // Check if we have cached user data (for immediate page loads)
-        const staffUserJson = localStorage.getItem('staff_user');
+        const staffUserJson = sessionStorage.getItem('staff_user');
         if (staffUserJson) {
           try {
             const staffUser = JSON.parse(staffUserJson);
@@ -71,12 +81,12 @@ export const LTIProvider = ({ children }) => {
             return;
           } catch (e) {
             console.error('Error parsing staff user data:', e);
-            localStorage.removeItem('staff_user');
+            sessionStorage.removeItem('staff_user');
           }
         }
 
-        const cachedUser = localStorage.getItem('lti_user');
-        const cachedCourse = localStorage.getItem('lti_course');
+        const cachedUser = sessionStorage.getItem('lti_user');
+        const cachedCourse = sessionStorage.getItem('lti_course');
         
         if (cachedUser && cachedCourse) {
           try {
@@ -97,7 +107,7 @@ export const LTIProvider = ({ children }) => {
     
     // Optional: Set up session refresh interval (every 30 minutes)
     const refreshInterval = setInterval(() => {
-      const sessionToken = localStorage.getItem('lti_session_token');
+      const sessionToken = sessionStorage.getItem('lti_session_token');
       if (sessionToken) {
         axios.get(
           `${LTI_API_URL}/lti/session/refresh`,
@@ -112,7 +122,7 @@ export const LTIProvider = ({ children }) => {
   }, []);
 
   const loginStaff = (staffUser) => {
-    localStorage.setItem('staff_user', JSON.stringify(staffUser));
+    sessionStorage.setItem('staff_user', JSON.stringify(staffUser));
     localStorage.removeItem('staff_force_reauth');
     setUser(staffUser);
     setCourse(null);
@@ -121,9 +131,9 @@ export const LTIProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    const sessionToken = localStorage.getItem('lti_session_token');
+    const sessionToken = sessionStorage.getItem('lti_session_token');
     const hadLtiSession = Boolean(sessionToken);
-    const hadStaffSession = Boolean(localStorage.getItem('staff_user'));
+    const hadStaffSession = Boolean(sessionStorage.getItem('staff_user'));
     
     if (sessionToken) {
       try {
@@ -142,12 +152,13 @@ export const LTIProvider = ({ children }) => {
     }
     
     // Clear all LTI data
-    localStorage.removeItem('lti_session_token');
-    localStorage.removeItem('lti_user');
-    localStorage.removeItem('lti_course');
+    sessionStorage.removeItem('lti_session_token');
+    sessionStorage.removeItem('lti_user');
+    sessionStorage.removeItem('lti_course');
+    setDefaultAuthHeader(null);
 
     // Clear staff auth (if any)
-    localStorage.removeItem('staff_user');
+    sessionStorage.removeItem('staff_user');
     localStorage.removeItem('staff_force_reauth');
     
     // Clear other session data
@@ -173,12 +184,12 @@ export const LTIProvider = ({ children }) => {
 
   const updateUser = (userData) => {
     setUser(userData);
-    localStorage.setItem('lti_user', JSON.stringify(userData));
+    sessionStorage.setItem('lti_user', JSON.stringify(userData));
   };
 
   const updateCourse = (courseData) => {
     setCourse(courseData);
-    localStorage.setItem('lti_course', JSON.stringify(courseData));
+    sessionStorage.setItem('lti_course', JSON.stringify(courseData));
   };
 
   return (

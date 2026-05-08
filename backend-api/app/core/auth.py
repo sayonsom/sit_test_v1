@@ -1,4 +1,7 @@
-from fastapi import HTTPException, Security
+import os
+import secrets
+
+from fastapi import Header, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt, jwk
 import requests
@@ -7,14 +10,27 @@ from starlette.status import HTTP_403_FORBIDDEN
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
 
-# Your Auth0 domain and API audience
-AUTH0_DOMAIN = 'dev-o4fxv2xy7kvnxb0d.us.auth0.com'
-API_AUDIENCE = 'http://localhost:3100/'
+# Optional Auth0 compatibility. Prefer environment configuration in all deployments.
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN", "")
+API_AUDIENCE = os.getenv("API_AUDIENCE", "")
+API_SERVICE_TOKEN = os.getenv("API_SERVICE_TOKEN", "")
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"https://{AUTH0_DOMAIN}/oauth/token")
 
+
+async def require_service_token(
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+):
+    if not API_SERVICE_TOKEN:
+        raise HTTPException(status_code=503, detail="Service token authentication is not configured")
+    if not x_service_token or not secrets.compare_digest(x_service_token, API_SERVICE_TOKEN):
+        raise HTTPException(status_code=403, detail="Invalid service token")
+    return {"sub": "trusted-service", "roles": ["service"]}
+
 def fetch_auth0_public_key(auth0_domain):
+    if not auth0_domain:
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Auth0 domain is not configured")
     jwks_uri = f"https://{auth0_domain}/.well-known/jwks.json"
     jwks = requests.get(jwks_uri).json()
     key_data = jwks['keys'][0]  # Assuming you want the first key
@@ -54,6 +70,8 @@ def require_role(required_role: str):
     return role_checker
 
 def get_rsa_key(token):
+    if not AUTH0_DOMAIN:
+        raise Exception('Auth0 domain is not configured')
     # Obtain the JWKS from Auth0's endpoint
     jwks_url = f'https://{AUTH0_DOMAIN}/.well-known/jwks.json'
     jwks = requests.get(jwks_url).json()
@@ -87,7 +105,7 @@ def validate_jwt(token: str = Security(oauth2_scheme)):
     try:
         # Decode the token
         unverified_header = jwt.get_unverified_header(token)
-        rsa_key = get_rsa_key(unverified_header)  # Implement this function to fetch the RSA key
+        rsa_key = get_rsa_key(token)
         payload = jwt.decode(
             token,
             rsa_key,

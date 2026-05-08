@@ -42,10 +42,12 @@ class Settings(BaseSettings):
     
     # Application Settings
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+    ENABLE_API_DOCS: bool = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
     # Backend API (for creating/syncing students)
     BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
+    BACKEND_API_SERVICE_TOKEN: str = os.getenv("BACKEND_API_SERVICE_TOKEN", "")
 
     # Staff/Admin OIDC (server-side exchange to avoid browser CORS on ADFS token endpoint)
     STAFF_OIDC_CLIENT_ID: str = os.getenv("STAFF_OIDC_CLIENT_ID", "")

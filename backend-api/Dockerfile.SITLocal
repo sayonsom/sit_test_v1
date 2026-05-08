@@ -16,9 +16,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Cloud SDK (keeping this for compatibility)
-RUN curl -sSL https://sdk.cloud.google.com | bash
-
 # Set work directory for our application
 WORKDIR /code
 
@@ -29,10 +26,6 @@ RUN pip install --upgrade pip && \
 
 # Copy application files
 COPY . /code
-
-# Create local credentials directory (optional for local development)
-RUN mkdir -p /code/gcloud/keys
-ENV GOOGLE_APPLICATION_CREDENTIALS=/code/gcloud/keys/align-google-credentials.json
 
 # Set default local environment variables for PostgreSQL
 ENV DB_HOST=postgres

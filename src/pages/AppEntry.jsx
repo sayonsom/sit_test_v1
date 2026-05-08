@@ -28,6 +28,8 @@ export default function AppEntry() {
       return;
     }
 
+    window.history.replaceState(null, "", "/app");
+
     // Validate and store session token
     const validateSession = async () => {
       try {
@@ -41,12 +43,12 @@ export default function AppEntry() {
         
         console.log('Session validated successfully');
         
-        // Store session token
-        localStorage.setItem('lti_session_token', sessionToken);
+        // Store session token for this browser tab only.
+        sessionStorage.setItem('lti_session_token', sessionToken);
         
         // Store user and course data for immediate access
-        localStorage.setItem('lti_user', JSON.stringify(response.data.user));
-        localStorage.setItem('lti_course', JSON.stringify(response.data.course));
+        sessionStorage.setItem('lti_user', JSON.stringify(response.data.user));
+        sessionStorage.setItem('lti_course', JSON.stringify(response.data.course));
         
         // Also store in sessionStorage for compatibility with existing code
         sessionStorage.setItem('HVLABuserEmail', response.data.user.email);

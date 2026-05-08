@@ -1,5 +1,5 @@
-# Use official Node.js LTS image as base
-FROM node:18-alpine as build
+# Use a maintained Node.js LTS image for the Vite build toolchain.
+FROM node:22-alpine AS build
 
 # Set working directory
 WORKDIR /app
@@ -14,6 +14,7 @@ RUN npm ci
 COPY . .
 
 # Build the application
+ENV GENERATE_SOURCEMAP=false
 RUN npm run build
 
 # Production stage - Use nginx to serve the built app

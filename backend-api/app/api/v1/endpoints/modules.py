@@ -10,8 +10,11 @@ from ....db.connection import get_db_connection
 from ....storage.local_storage import get_local_storage
 import random
 import os
+from pathlib import PurePosixPath
 
 router = APIRouter()
+MAX_CONTENT_UPLOAD_BYTES = int(os.getenv("MAX_CONTENT_UPLOAD_BYTES", "26214400"))
+ALLOWED_CONTENT_EXTENSIONS = {".md", ".json", ".js", ".glb", ".gltf", ".png", ".jpg", ".jpeg", ".pdf", ".csv"}
 
 # Initialize the asynchronous OpenAI client from environment variable
 async_openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
@@ -129,10 +132,19 @@ async def upload_content_file(
     folder: str = Form(...),
 ):
     try:
+        safe_folder = PurePosixPath(folder.replace("\\", "/"))
+        if safe_folder.is_absolute() or ".." in safe_folder.parts:
+            raise HTTPException(status_code=400, detail="Invalid folder path")
+        safe_name = PurePosixPath(file.filename or "").name
+        suffix = PurePosixPath(safe_name).suffix.lower()
+        if not safe_name or suffix not in ALLOWED_CONTENT_EXTENSIONS:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
         storage = get_local_storage()
         bucket_name = os.environ.get("STORAGE_BUCKET_NAME", "align-hvl-2024-release1")
-        blob_name = f"{folder}/{file.filename}"
         file_data = await file.read()
+        if len(file_data) > MAX_CONTENT_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
+        blob_name = f"{safe_folder.as_posix().strip('/')}/{safe_name}"
         storage.upload_file(bucket_name, blob_name, file_data)
         return {"path": blob_name, "filename": file.filename}
     except Exception as e:
