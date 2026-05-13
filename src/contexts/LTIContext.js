@@ -32,24 +32,26 @@ export const LTIProvider = ({ children }) => {
     // Check for session token in tab-scoped storage
     const validateSession = async () => {
       const sessionToken = sessionStorage.getItem('lti_session_token');
-      
+
       if (sessionToken) {
+        // An LTI session always wins over a stale staff_user cache — clear
+        // it up front so an in-flight validate can't race with a leftover
+        // instructor identity.
+        sessionStorage.removeItem('staff_user');
         setDefaultAuthHeader(sessionToken);
         try {
           const response = await axios.get(
             `${LTI_API_URL}/lti/session/validate`,
-            { 
+            {
               headers: { Authorization: `Bearer ${sessionToken}` },
-              timeout: 10000 
+              timeout: 10000
             }
           );
-          
+
           setUser(response.data.user);
           setCourse(response.data.course);
           setIsAuthenticated(true);
           setAuthMethod("lti");
-          // If a staff session existed, clear it to avoid confusion.
-          sessionStorage.removeItem('staff_user');
           
           console.log('Session validated:', {
             user: response.data.user.email,
@@ -134,15 +136,15 @@ export const LTIProvider = ({ children }) => {
     const sessionToken = sessionStorage.getItem('lti_session_token');
     const hadLtiSession = Boolean(sessionToken);
     const hadStaffSession = Boolean(sessionStorage.getItem('staff_user'));
-    
+
     if (sessionToken) {
       try {
         await axios.post(
           `${LTI_API_URL}/lti/logout`,
           {},
-          { 
+          {
             headers: { Authorization: `Bearer ${sessionToken}` },
-            timeout: 5000 
+            timeout: 5000
           }
         );
       } catch (error) {
@@ -150,36 +152,42 @@ export const LTIProvider = ({ children }) => {
         // Continue with logout even if API call fails
       }
     }
-    
-    // Clear all LTI data
-    sessionStorage.removeItem('lti_session_token');
-    sessionStorage.removeItem('lti_user');
-    sessionStorage.removeItem('lti_course');
-    setDefaultAuthHeader(null);
 
-    // Clear staff auth (if any)
-    sessionStorage.removeItem('staff_user');
-    localStorage.removeItem('staff_force_reauth');
-    
-    // Clear other session data
+    // Preserve cross-session UI prefs that aren't tied to identity.
+    const darkMode = localStorage.getItem('darkMode');
+
+    // Nuke all per-tab session state (LTI token, cached user/course,
+    // legacy HVLABuserEmail/StudentID, staff_user, anything else).
     sessionStorage.clear();
-    
+
+    // Clear any identity-related localStorage entries. Anything that
+    // could re-hydrate a stale account must go here.
+    localStorage.removeItem('staff_force_reauth');
+
+    // Restore preserved UI prefs.
+    if (darkMode !== null) {
+      localStorage.setItem('darkMode', darkMode);
+    }
+
+    setDefaultAuthHeader(null);
     setUser(null);
     setCourse(null);
     setIsAuthenticated(false);
     setAuthMethod("none");
-    
-    // Redirect based on previous auth method
+
+    // Redirect based on previous auth method. Each branch is a hard
+    // navigation, which fully tears down React state — no chance for a
+    // stale user to flash before the redirect lands.
     if (hadStaffSession) {
       localStorage.setItem('staff_force_reauth', '1');
-      window.location.href = resolveLtiUrl('/lti/staff/logout');
+      window.location.replace(resolveLtiUrl('/lti/staff/logout'));
       return;
     }
     if (hadLtiSession) {
-      window.location.href = '/lti-required';
+      window.location.replace('/lti-required');
       return;
     }
-    window.location.href = '/';
+    window.location.replace('/');
   };
 
   const updateUser = (userData) => {
