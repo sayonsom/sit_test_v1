@@ -45,6 +45,12 @@ export default function AppEntry() {
         
         // Store session token for this browser tab only.
         sessionStorage.setItem('lti_session_token', sessionToken);
+
+        if (!response.data.api_token) {
+          throw new Error('Session validation response is missing API token');
+        }
+        sessionStorage.setItem('vhvl_api_token', response.data.api_token);
+        axios.defaults.headers.common.Authorization = `Bearer ${response.data.api_token}`;
         
         // Store user and course data for immediate access
         sessionStorage.setItem('lti_user', JSON.stringify(response.data.user));

@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import { LTI_API_URL } from "../env";
+import { API_URL, LTI_API_URL } from "../env";
 
 const LTIContext = createContext();
+const API_TOKEN_KEY = 'vhvl_api_token';
 
 const setDefaultAuthHeader = (token) => {
   if (token) {
@@ -21,6 +22,24 @@ const resolveLtiUrl = (path) => {
   return `${base}${path}`;
 };
 
+const clearStoredAuth = () => {
+  sessionStorage.removeItem('lti_session_token');
+  sessionStorage.removeItem('lti_user');
+  sessionStorage.removeItem('lti_course');
+  sessionStorage.removeItem(API_TOKEN_KEY);
+  sessionStorage.removeItem('staff_user');
+  setDefaultAuthHeader(null);
+};
+
+const validateApiToken = async (apiToken) => {
+  if (!apiToken || !API_URL) return null;
+  const response = await axios.get(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${apiToken}` },
+    timeout: 10000,
+  });
+  return response.data;
+};
+
 export const LTIProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [course, setCourse] = useState(null);
@@ -34,7 +53,6 @@ export const LTIProvider = ({ children }) => {
       const sessionToken = sessionStorage.getItem('lti_session_token');
       
       if (sessionToken) {
-        setDefaultAuthHeader(sessionToken);
         try {
           const response = await axios.get(
             `${LTI_API_URL}/lti/session/validate`,
@@ -43,6 +61,13 @@ export const LTIProvider = ({ children }) => {
               timeout: 10000 
             }
           );
+
+          const apiToken = response.data.api_token;
+          if (!apiToken) {
+            throw new Error('Session validation response is missing API token');
+          }
+          sessionStorage.setItem(API_TOKEN_KEY, apiToken);
+          setDefaultAuthHeader(apiToken);
           
           setUser(response.data.user);
           setCourse(response.data.course);
@@ -58,21 +83,24 @@ export const LTIProvider = ({ children }) => {
         } catch (error) {
           console.error('Session validation failed:', error);
           // Clear invalid session
-          sessionStorage.removeItem('lti_session_token');
-          sessionStorage.removeItem('lti_user');
-          sessionStorage.removeItem('lti_course');
-          setDefaultAuthHeader(null);
+          clearStoredAuth();
           setIsAuthenticated(false);
           setUser(null);
           setCourse(null);
           setAuthMethod("none");
         }
       } else {
-        // Check if we have cached user data (for immediate page loads)
         const staffUserJson = sessionStorage.getItem('staff_user');
-        if (staffUserJson) {
+        const apiToken = sessionStorage.getItem(API_TOKEN_KEY);
+        if (staffUserJson && apiToken) {
           try {
+            const actor = await validateApiToken(apiToken);
+            const roles = Array.isArray(actor?.roles) ? actor.roles : [];
+            if (!roles.some((role) => ["teacher", "admin", "service"].includes(role))) {
+              throw new Error('Stored staff token is not authorized for staff access');
+            }
             const staffUser = JSON.parse(staffUserJson);
+            setDefaultAuthHeader(apiToken);
             setUser(staffUser);
             setCourse(null);
             setIsAuthenticated(true);
@@ -80,16 +108,18 @@ export const LTIProvider = ({ children }) => {
             setIsLoading(false);
             return;
           } catch (e) {
-            console.error('Error parsing staff user data:', e);
-            sessionStorage.removeItem('staff_user');
+            console.error('Error validating staff session:', e);
+            clearStoredAuth();
           }
         }
 
         const cachedUser = sessionStorage.getItem('lti_user');
         const cachedCourse = sessionStorage.getItem('lti_course');
         
-        if (cachedUser && cachedCourse) {
+        if (!isAuthenticated && cachedUser && cachedCourse && apiToken) {
           try {
+            await validateApiToken(apiToken);
+            setDefaultAuthHeader(apiToken);
             setUser(JSON.parse(cachedUser));
             setCourse(JSON.parse(cachedCourse));
             setIsAuthenticated(true);
@@ -121,9 +151,14 @@ export const LTIProvider = ({ children }) => {
     return () => clearInterval(refreshInterval);
   }, []);
 
-  const loginStaff = (staffUser) => {
+  const loginStaff = (staffUser, apiToken) => {
+    if (!apiToken) {
+      throw new Error('Staff sign-in response is missing API token');
+    }
     sessionStorage.setItem('staff_user', JSON.stringify(staffUser));
+    sessionStorage.setItem(API_TOKEN_KEY, apiToken);
     localStorage.removeItem('staff_force_reauth');
+    setDefaultAuthHeader(apiToken);
     setUser(staffUser);
     setCourse(null);
     setIsAuthenticated(true);
@@ -152,13 +187,7 @@ export const LTIProvider = ({ children }) => {
     }
     
     // Clear all LTI data
-    sessionStorage.removeItem('lti_session_token');
-    sessionStorage.removeItem('lti_user');
-    sessionStorage.removeItem('lti_course');
-    setDefaultAuthHeader(null);
-
-    // Clear staff auth (if any)
-    sessionStorage.removeItem('staff_user');
+    clearStoredAuth();
     localStorage.removeItem('staff_force_reauth');
     
     // Clear other session data

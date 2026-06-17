@@ -8,6 +8,8 @@ from ....schemas.schemas import ModuleCreate, ModuleInDBBase
 from ....crud.modules import create_module, get_modules_for_course, get_module_by_id, get_module_assignments, update_module, delete_module, get_questions_and_options_by_module
 from ....db.connection import get_db_connection
 from ....storage.local_storage import get_local_storage
+from ....core.auth import AuthenticatedActor, require_authenticated_user, require_staff_actor
+from ....core.rbac import get_course_id_for_module, require_course_read_access, require_course_staff_access
 import random
 import os
 from pathlib import PurePosixPath
@@ -46,7 +48,10 @@ async def fun_fact_finding_with_openai(text: str) -> str:
     return response_message
 
 @router.post("/rephrase/")
-async def rephrase(text: str):
+async def rephrase(
+    text: str,
+    _actor: AuthenticatedActor = Depends(require_authenticated_user),
+):
     try:
         # Since FastAPI supports asynchronous functions, you can await the rephrasing function directly
         rephrased_text = await rephrase_text_with_openai(text)
@@ -56,7 +61,10 @@ async def rephrase(text: str):
     
 
 @router.post("/funfact/")
-async def funfact(text: str):
+async def funfact(
+    text: str,
+    _actor: AuthenticatedActor = Depends(require_authenticated_user),
+):
     try:
         # Since FastAPI supports asynchronous functions, you can await the fun fact function directly
         fun_fact = await fun_fact_finding_with_openai(text)
@@ -67,27 +75,50 @@ async def funfact(text: str):
 
 # Endpoint to create a new module
 @router.post("/modules/", response_model=dict)
-async def add_new_module(course_id: int, module: ModuleCreate, conn = Depends(get_db_connection)):
+async def add_new_module(
+    course_id: int,
+    module: ModuleCreate,
+    actor: AuthenticatedActor = Depends(require_staff_actor),
+    conn = Depends(get_db_connection),
+):
     try:
+        await require_course_staff_access(conn, actor, course_id)
         return await create_module(conn, course_id, module)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error creating module: {str(e)}")
 
 # Endpoint to list all the modules for a course
 @router.get("/courses/{course_id}/modules", response_model=List[Dict])
-async def list_modules_for_course(course_id: int, conn = Depends(get_db_connection)):
+async def list_modules_for_course(
+    course_id: int,
+    actor: AuthenticatedActor = Depends(require_authenticated_user),
+    conn = Depends(get_db_connection),
+):
     try:
+        await require_course_read_access(conn, actor, course_id)
         modules = await get_modules_for_course(conn, course_id)
         return modules
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # Endpoint to get a module by id
 @router.get("/modules/{module_id}", response_model=ModuleInDBBase)
-async def read_module(module_id: UUID = Path(..., title="The ID of the module to get"), conn = Depends(get_db_connection)):
+async def read_module(
+    module_id: UUID = Path(..., title="The ID of the module to get"),
+    actor: AuthenticatedActor = Depends(require_authenticated_user),
+    conn = Depends(get_db_connection),
+):
     try:
+        course_id = await get_course_id_for_module(conn, module_id)
+        await require_course_read_access(conn, actor, course_id)
         db_module = await get_module_by_id(conn, module_id)
         return db_module
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -95,10 +126,19 @@ async def read_module(module_id: UUID = Path(..., title="The ID of the module to
 
 # Endpoint to update a module
 @router.put("/modules/{module_id}", response_model=Dict)
-async def update_module_endpoint(module_id: UUID, module: ModuleCreate, conn = Depends(get_db_connection)):
+async def update_module_endpoint(
+    module_id: UUID,
+    module: ModuleCreate,
+    actor: AuthenticatedActor = Depends(require_staff_actor),
+    conn = Depends(get_db_connection),
+):
     try:
+        course_id = await get_course_id_for_module(conn, module_id)
+        await require_course_staff_access(conn, actor, course_id)
         updated_module = await update_module(conn, module_id, module)
         return updated_module
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -106,10 +146,18 @@ async def update_module_endpoint(module_id: UUID, module: ModuleCreate, conn = D
 
 # Endpoint to delete a module
 @router.delete("/modules/{module_id}")
-async def delete_module_endpoint(module_id: UUID, conn = Depends(get_db_connection)):
+async def delete_module_endpoint(
+    module_id: UUID,
+    actor: AuthenticatedActor = Depends(require_staff_actor),
+    conn = Depends(get_db_connection),
+):
     try:
+        course_id = await get_course_id_for_module(conn, module_id)
+        await require_course_staff_access(conn, actor, course_id)
         deleted_module = await delete_module(conn, module_id)
         return deleted_module
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -117,10 +165,18 @@ async def delete_module_endpoint(module_id: UUID, conn = Depends(get_db_connecti
 
 # Endpoint to get all the assignments and their Q&A for a module
 @router.get("/modules/{module_id}/assignments", response_model=List[Dict])
-async def get_questions_endpoint(module_id: UUID = Path(..., title="The UUID of the module to retrieve questions for"), conn = Depends(get_db_connection)):
+async def get_questions_endpoint(
+    module_id: UUID = Path(..., title="The UUID of the module to retrieve questions for"),
+    actor: AuthenticatedActor = Depends(require_authenticated_user),
+    conn = Depends(get_db_connection),
+):
     try:
+        course_id = await get_course_id_for_module(conn, module_id)
+        await require_course_read_access(conn, actor, course_id)
         questions_and_options = await get_questions_and_options_by_module(conn, module_id)
         return questions_and_options
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
@@ -130,6 +186,7 @@ async def get_questions_endpoint(module_id: UUID = Path(..., title="The UUID of 
 async def upload_content_file(
     file: UploadFile = File(...),
     folder: str = Form(...),
+    _actor: AuthenticatedActor = Depends(require_staff_actor),
 ):
     try:
         safe_folder = PurePosixPath(folder.replace("\\", "/"))
@@ -147,5 +204,7 @@ async def upload_content_file(
         blob_name = f"{safe_folder.as_posix().strip('/')}/{safe_name}"
         storage.upload_file(bucket_name, blob_name, file_data)
         return {"path": blob_name, "filename": file.filename}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")

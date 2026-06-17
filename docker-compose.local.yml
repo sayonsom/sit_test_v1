@@ -63,6 +63,8 @@ services:
       # Point LTI backend to local API (for student sync)
       - BACKEND_API_URL=http://backend-api:8080/api/v1
       - BACKEND_API_SERVICE_TOKEN=${BACKEND_API_SERVICE_TOKEN:-local-dev-service-token}
+      - BACKEND_API_JWT_SECRET=${BACKEND_API_JWT_SECRET:-local-dev-jwt-secret}
+      - BACKEND_API_JWT_AUDIENCE=${BACKEND_API_JWT_AUDIENCE:-hvvl-backend-api}
       # Staff OIDC (optional)
       - STAFF_OIDC_CLIENT_ID=${REACT_APP_AAD_CLIENT_ID:-}
       - STAFF_OIDC_AUTHORITY=${REACT_APP_AAD_AUTHORITY:-}
@@ -94,6 +96,9 @@ services:
       - STORAGE_BUCKET_NAME=align-hvl-2024-release1
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - API_SERVICE_TOKEN=${BACKEND_API_SERVICE_TOKEN:-local-dev-service-token}
+      - BACKEND_API_JWT_SECRET=${BACKEND_API_JWT_SECRET:-local-dev-jwt-secret}
+      - BACKEND_API_JWT_AUDIENCE=${BACKEND_API_JWT_AUDIENCE:-hvvl-backend-api}
+      - LOCAL_STORAGE_SIGNING_KEY=${LOCAL_STORAGE_SIGNING_KEY:-local-dev-storage-signing-key}
       - ENABLE_API_DOCS=${ENABLE_API_DOCS:-true}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       - TRUSTED_PROXY_HOSTS=${TRUSTED_PROXY_HOSTS:-127.0.0.1,localhost}

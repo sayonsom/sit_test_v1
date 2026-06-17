@@ -17,7 +17,7 @@ escape_nginx_header() {
 }
 
 # --- Nginx backend proxy configuration ---
-BACKEND_API_URL="${BACKEND_API_URL:-https://alignbackendapis-708196257066.asia-southeast1.run.app/api/v1}"
+BACKEND_API_URL="${BACKEND_API_URL:-http://backend-api:8080/api/v1}"
 LTI_BACKEND_URL="${LTI_BACKEND_URL:-http://lti-backend:8000}"
 
 # Extract upstream origin (scheme + host[:port])

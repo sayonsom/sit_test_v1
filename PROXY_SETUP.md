@@ -8,7 +8,7 @@ We use a **reverse proxy** on port 4000 that routes requests to the appropriate 
 - `/lti/*` → Backend (port 8000)
 - `/health` → Backend (port 8000)
 - `/docs` → Backend (port 8000)
-- `/api/v1/*` → alignbackendapis (Cloud Run or local)
+- `/api/v1/*` → local backend-api service
 - `/*` (everything else) → Frontend (port 3000)
 
 ## Architecture
@@ -64,9 +64,8 @@ We use a **reverse proxy** on port 4000 that routes requests to the appropriate 
 
 4. **Proxy** (Reverse proxy on port 4000)
    ```bash
-   # Optional: override the upstream alignbackendapis base (no /api/v1)
+   # Optional: override the local backend API upstream base (no /api/v1)
    # export API_UPSTREAM_URL=http://localhost:8080
-   # export API_UPSTREAM_URL=https://alignbackendapis-708196257066.asia-southeast1.run.app
    
    node proxy-server.js
    ```

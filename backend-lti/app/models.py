@@ -10,6 +10,7 @@ class SessionResponse(BaseModel):
     """Response model for session validation"""
     user: Dict[str, Any]
     course: Dict[str, Any]
+    api_token: Optional[str] = None
 
 
 class LogoutRequest(BaseModel):
@@ -49,3 +50,4 @@ class StaffCodeExchangeResponse(BaseModel):
     """Response model for staff code exchange"""
     user: Dict[str, Any]
     claims: Dict[str, Any]
+    api_token: Optional[str] = None

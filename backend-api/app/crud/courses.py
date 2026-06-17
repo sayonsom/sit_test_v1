@@ -36,10 +36,10 @@ async def get_courses_for_instructor(conn: Connection, instructor_id: int) -> Li
 async def get_courses_for_student(conn: Connection, email: str) -> List[Dict[str, Any]]:
     sql_command = """
         SELECT * FROM Courses 
-        WHERE id IN (
+        WHERE course_id IN (
             SELECT course_id FROM Enrollments 
             WHERE student_id = (
-                SELECT id FROM Students WHERE email = $1
+                SELECT student_id FROM Students WHERE email = $1
             )
         )
     """

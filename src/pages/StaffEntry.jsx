@@ -131,16 +131,19 @@ export default function StaffEntry() {
           return;
         }
 
-        loginStaff({
-          email: user.email || "",
-          name: user.name || user.email || "Staff User",
-          picture:
-            user.picture ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              user.name || user.email || "Staff User"
-            )}&size=200`,
-          user_id: user.user_id || user.email || user.sub || "staff",
-        });
+        loginStaff(
+          {
+            email: user.email || "",
+            name: user.name || user.email || "Staff User",
+            picture:
+              user.picture ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                user.name || user.email || "Staff User"
+              )}&size=200`,
+            user_id: user.user_id || user.email || user.sub || "staff",
+          },
+          response?.data?.api_token
+        );
 
         navigate("/home", { replace: true });
       } catch (e) {

@@ -91,7 +91,7 @@ SESSION_TTL=28800  # 8 hours in seconds
 STATE_TTL=300      # 5 minutes for state/nonce
 
 # Backend API
-BACKEND_API_URL=https://alignbackendapis.onrender.com/api/v1
+BACKEND_API_URL=http://backend-api:8080/api/v1
 ```
 
 ## Quick Start

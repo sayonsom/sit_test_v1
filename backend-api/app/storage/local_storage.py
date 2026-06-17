@@ -7,8 +7,12 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 import base64
+import hashlib
+import hmac
 import json
 import posixpath
+import time
+import urllib.parse
 
 
 class LocalStorage:
@@ -25,7 +29,6 @@ class LocalStorage:
             base_path: Root directory for local file storage
         """
         self.base_path = Path(base_path)
-        self.base_path.mkdir(parents=True, exist_ok=True)
 
     def _safe_path(self, bucket_name: str, blob_name: str) -> Path:
         if not bucket_name or bucket_name.startswith(("/", "\\")):
@@ -59,19 +62,40 @@ class LocalStorage:
         Returns:
             Local file URL/path
         """
-        # Create bucket directory if it doesn't exist
-        bucket_path = self.base_path / bucket_name
-        bucket_path.mkdir(parents=True, exist_ok=True)
+        # Validate the path without touching the filesystem. Upload operations
+        # are responsible for creating directories.
+        self._safe_path(bucket_name, blob_name)
         
-        # Construct full file path
-        file_path = self._safe_path(bucket_name, blob_name)
-        
-        # In local mode, we return an API endpoint URL that serves the file
-        # This mimics the signed URL behavior
         encoded_path = base64.urlsafe_b64encode(f"{bucket_name}/{blob_name}".encode()).decode()
+        expires = int(time.time() + expiration.total_seconds())
+        signature = self.sign_encoded_path(encoded_path, expires)
         
         # Return a local API endpoint URL
-        return f"/api/v1/local-storage/{encoded_path}"
+        query = urllib.parse.urlencode({"expires": expires, "signature": signature})
+        return f"/api/v1/local-storage/{encoded_path}?{query}"
+
+    @staticmethod
+    def _signing_key() -> str:
+        return (
+            os.getenv("LOCAL_STORAGE_SIGNING_KEY")
+            or os.getenv("BACKEND_API_JWT_SECRET")
+            or os.getenv("VHVL_SIGNING_KEY")
+            or os.getenv("API_SERVICE_TOKEN")
+            or ""
+        )
+
+    def sign_encoded_path(self, encoded_path: str, expires: int) -> str:
+        secret = self._signing_key()
+        if not secret:
+            return ""
+        payload = f"{encoded_path}.{expires}".encode("utf-8")
+        return hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+
+    def verify_signed_url(self, encoded_path: str, expires: Optional[int], signature: Optional[str]) -> bool:
+        if not expires or not signature or expires < int(time.time()):
+            return False
+        expected = self.sign_encoded_path(encoded_path, expires)
+        return bool(expected) and hmac.compare_digest(expected, signature)
     
     def get_file_path(self, bucket_name: str, blob_name: str) -> Path:
         """

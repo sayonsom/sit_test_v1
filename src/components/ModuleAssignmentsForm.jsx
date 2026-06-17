@@ -9,6 +9,11 @@ import { API_URL } from "../env";
 
 const apiUrl = API_URL;
 
+const authHeaders = () => {
+  const token = sessionStorage.getItem('vhvl_api_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export default function ModuleAssignmentsForm ( {moduleID} ){
   const [moduleAssignments, setModuleAssignments] = useState(null);
   const [responses, setResponses] = useState({});
@@ -19,7 +24,9 @@ export default function ModuleAssignmentsForm ( {moduleID} ){
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${apiUrl}/modules/${moduleID}/assignments`);
+        const response = await fetch(`${apiUrl}/modules/${moduleID}/assignments`, {
+          headers: authHeaders(),
+        });
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
@@ -89,7 +96,8 @@ export default function ModuleAssignmentsForm ( {moduleID} ){
                 const response = await fetch(`${apiUrl}/modules/${moduleID}/assignments/${assignmentId}/questions/${questionId}/responses`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        ...authHeaders()
                     },
                     body: JSON.stringify({
                         student_id: studentId,

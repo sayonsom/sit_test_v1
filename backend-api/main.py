@@ -26,6 +26,7 @@ from app.api.v1.endpoints import (
     courses,
     modules,
     assignments,
+    auth_routes,
     questions,
     responses,
 )
@@ -84,6 +85,7 @@ app.include_router(instructors.router, prefix="/api/v1", tags=["Instructors"])
 app.include_router(courses.router, prefix="/api/v1", tags=["Courses"])
 app.include_router(modules.router, prefix="/api/v1", tags=["Modules"])
 app.include_router(assignments.router, prefix="/api/v1", tags=["Assignments"])
+app.include_router(auth_routes.router, prefix="/api/v1", tags=["Auth"])
 
 app.include_router(questions.router, prefix="/api/v1", tags=["Questions"])
 app.include_router(responses.router, prefix="/api/v1", tags=["Responses"])

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Path, Body
 from typing import List, Dict, Any, Optional
 from ....schemas.schemas import QuestionCreate
 from ....crud.questions import create_question, get_questions_for_assignment
+from ....core.auth import AuthenticatedActor, require_staff_actor
 
 router = APIRouter()
 
@@ -9,6 +10,7 @@ router = APIRouter()
 def create_question_endpoint(
     assignment_id: int = Path(..., description="The ID of the assignment"),
     question_data: QuestionCreate = Body(...),
+    _actor: AuthenticatedActor = Depends(require_staff_actor),
 ):
     if question_data.assignment_id != assignment_id:
         raise HTTPException(

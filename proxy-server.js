@@ -12,14 +12,14 @@ const app = express();
 const PORT = 4000;
 const API_UPSTREAM_URL =
   process.env.API_UPSTREAM_URL ||
-  'https://alignbackendapis-708196257066.asia-southeast1.run.app';
+  'http://localhost:8080';
 
 // Health check
 app.get('/proxy-health', (req, res) => {
   res.json({ status: 'ok', message: 'Proxy server running' });
 });
 
-// Proxy /api/v1/* requests to alignbackendapis (Cloud Run) to avoid CORS
+// Proxy /api/v1/* requests to the local backend API to avoid CORS.
 app.use('/api/v1', createProxyMiddleware({
   target: API_UPSTREAM_URL,
   changeOrigin: true,
@@ -74,7 +74,7 @@ app.listen(PORT, () => {
 ╚════════════════════════════════════════════════════════════╝
 
 Routing:
-  • /api/v1/* → ${API_UPSTREAM_URL} (alignbackendapis)
+  • /api/v1/* → ${API_UPSTREAM_URL} (Backend API)
   • /lti/*    → http://localhost:8000 (LTI Backend)
   • /health   → http://localhost:8000 (Backend Health)
   • /docs     → http://localhost:8000 (API Docs)

@@ -7,6 +7,8 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import httpx
+import time
+import jwt
 from typing import Optional
 
 from .config import settings
@@ -47,6 +49,74 @@ session_manager = SessionManager()
 staff_oidc_handler = StaffOIDCHandler()
 
 
+def create_backend_api_token(
+    user_data: dict,
+    course_data: Optional[dict] = None,
+    auth_method: str = "lti",
+) -> Optional[str]:
+    """Mint a short-lived signed token for backend-api authorization."""
+    if not settings.BACKEND_API_JWT_SECRET:
+        logger.warning("BACKEND_API_JWT_SECRET/VHVL_SIGNING_KEY is not configured; API token not issued")
+        return None
+
+    now = int(time.time())
+    roles = user_data.get("roles") or []
+    if isinstance(roles, str):
+        roles = [roles]
+    if auth_method == "staff" and not roles:
+        roles = ["teacher"]
+    if auth_method == "lti" and not roles:
+        roles = ["student"]
+
+    claims = {
+        "sub": user_data.get("sub") or user_data.get("user_id") or user_data.get("email"),
+        "email": user_data.get("email"),
+        "name": user_data.get("name"),
+        "roles": roles,
+        "auth_method": auth_method,
+        "iat": now,
+        "exp": now + min(settings.SESSION_TTL, 8 * 60 * 60),
+    }
+    if course_data:
+        claims["course"] = course_data
+        claims["course_id"] = course_data.get("course_id") or course_data.get("id")
+    if settings.BACKEND_API_JWT_AUDIENCE:
+        claims["aud"] = settings.BACKEND_API_JWT_AUDIENCE
+
+    return jwt.encode(claims, settings.BACKEND_API_JWT_SECRET, algorithm="HS256")
+
+
+def _list_claim(claims: dict, key: str) -> list[str]:
+    value = claims.get(key)
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str) and item.strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def ensure_staff_account_allowed(user: dict, claims: dict) -> None:
+    email = (user.get("email") or claims.get("email") or claims.get("upn") or "").lower()
+
+    allowed_emails = settings.staff_allowed_emails_list
+    if allowed_emails and email not in allowed_emails:
+        raise HTTPException(status_code=403, detail="Staff account is not in the allowed email list")
+
+    allowed_domain = settings.STAFF_ALLOWED_EMAIL_DOMAIN.strip().lower().lstrip("@")
+    if allowed_domain and not email.endswith(f"@{allowed_domain}"):
+        raise HTTPException(status_code=403, detail="Staff account is not in the allowed email domain")
+
+    allowed_roles = settings.staff_allowed_roles_list
+    token_roles = _list_claim(claims, "roles")
+    if allowed_roles and not any(role in allowed_roles for role in token_roles):
+        raise HTTPException(status_code=403, detail="Staff account does not have an allowed role")
+
+    allowed_groups = settings.staff_allowed_group_ids_list
+    token_groups = _list_claim(claims, "groups")
+    if allowed_groups and not any(group in allowed_groups for group in token_groups):
+        raise HTTPException(status_code=403, detail="Staff account is not in an allowed group")
+
+
 async def sync_student_to_backend(user_data: dict) -> bool:
     """
     Sync student to alignbackendapis database.
@@ -70,7 +140,10 @@ async def sync_student_to_backend(user_data: dict) -> bool:
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
                 # Try to get student
-                response = await client.get(f"{backend_url}/students/{email}")
+                response = await client.get(
+                    f"{backend_url}/students/{email}",
+                    headers=service_headers,
+                )
                 
                 if response.status_code == 200:
                     # Student exists, update login info
@@ -240,7 +313,11 @@ async def staff_exchange(payload: StaffCodeExchangeRequest):
     """
     try:
         user, claims = await staff_oidc_handler.exchange_code(code=payload.code, state=payload.state)
-        return StaffCodeExchangeResponse(user=user, claims=claims)
+        ensure_staff_account_allowed(user, claims)
+        api_token = create_backend_api_token(user, auth_method="staff")
+        return StaffCodeExchangeResponse(user=user, claims=claims, api_token=api_token)
+    except HTTPException:
+        raise
     except ValueError as e:
         logger.error(f"Staff code exchange failed: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -290,7 +367,12 @@ async def validate_session(authorization: Optional[str] = Header(None)) -> Sessi
         
         return SessionResponse(
             user=session_data['user'],
-            course=session_data['course']
+            course=session_data['course'],
+            api_token=create_backend_api_token(
+                session_data["user"],
+                session_data["course"],
+                auth_method="lti",
+            ),
         )
         
     except HTTPException:

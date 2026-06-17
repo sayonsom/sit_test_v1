@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Backend API (for creating/syncing students)
     BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/v1")
     BACKEND_API_SERVICE_TOKEN: str = os.getenv("BACKEND_API_SERVICE_TOKEN", "")
+    BACKEND_API_JWT_SECRET: str = os.getenv(
+        "BACKEND_API_JWT_SECRET",
+        os.getenv("VHVL_SIGNING_KEY", ""),
+    )
+    BACKEND_API_JWT_AUDIENCE: str = os.getenv("BACKEND_API_JWT_AUDIENCE", "")
 
     # Staff/Admin OIDC (server-side exchange to avoid browser CORS on ADFS token endpoint)
     STAFF_OIDC_CLIENT_ID: str = os.getenv("STAFF_OIDC_CLIENT_ID", "")
@@ -56,12 +61,44 @@ class Settings(BaseSettings):
     STAFF_OIDC_SCOPES: str = os.getenv("STAFF_OIDC_SCOPES", "openid")
     STAFF_OIDC_METADATA_URL: str = os.getenv("STAFF_OIDC_METADATA_URL", "")
     STAFF_OIDC_POST_LOGOUT_REDIRECT_URI: str = os.getenv("STAFF_OIDC_POST_LOGOUT_REDIRECT_URI", "")
+    STAFF_ALLOWED_EMAIL_DOMAIN: str = os.getenv(
+        "STAFF_ALLOWED_EMAIL_DOMAIN",
+        os.getenv("AAD_ALLOWED_EMAIL_DOMAIN", ""),
+    )
+    STAFF_ALLOWED_EMAILS: str = os.getenv(
+        "STAFF_ALLOWED_EMAILS",
+        os.getenv("AAD_ALLOWED_EMAILS", ""),
+    )
+    STAFF_ALLOWED_ROLES: str = os.getenv(
+        "STAFF_ALLOWED_ROLES",
+        os.getenv("AAD_ALLOWED_ROLES", ""),
+    )
+    STAFF_ALLOWED_GROUP_IDS: str = os.getenv(
+        "STAFF_ALLOWED_GROUP_IDS",
+        os.getenv("AAD_ALLOWED_GROUP_IDS", ""),
+    )
+
+    @staticmethod
+    def _split_csv(raw: str) -> List[str]:
+        return [item.strip() for item in raw.split(",") if item.strip()]
 
     @property
     def staff_oidc_scopes_list(self) -> List[str]:
         raw = self.STAFF_OIDC_SCOPES.replace(",", " ")
         values = [item.strip() for item in raw.split(" ") if item.strip()]
         return values if values else ["openid"]
+
+    @property
+    def staff_allowed_emails_list(self) -> List[str]:
+        return [item.lower() for item in self._split_csv(self.STAFF_ALLOWED_EMAILS)]
+
+    @property
+    def staff_allowed_roles_list(self) -> List[str]:
+        return self._split_csv(self.STAFF_ALLOWED_ROLES)
+
+    @property
+    def staff_allowed_group_ids_list(self) -> List[str]:
+        return self._split_csv(self.STAFF_ALLOWED_GROUP_IDS)
 
     @property
     def staff_oidc_redirect_uri(self) -> str:
