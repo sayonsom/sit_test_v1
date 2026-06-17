@@ -3,6 +3,23 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { LTI_API_URL } from "../env";
 
+const AUTH_STORAGE_KEYS = [
+  "lti_session_token",
+  "lti_user",
+  "lti_course",
+  "vhvl_api_token",
+  "staff_user",
+  "HVLABuserEmail",
+  "HVLABuserFullName",
+  "StudentID",
+];
+
+const clearPriorAuthState = () => {
+  AUTH_STORAGE_KEYS.forEach((key) => sessionStorage.removeItem(key));
+  localStorage.removeItem("staff_force_reauth");
+  delete axios.defaults.headers.common.Authorization;
+};
+
 export default function AppEntry() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -11,7 +28,7 @@ export default function AppEntry() {
   useEffect(() => {
     const sessionToken = searchParams.get("session_token");
     const errorParam = searchParams.get("error");
-    
+
     // Check if there's an error from LTI backend
     if (errorParam) {
       console.error('LTI launch error:', errorParam);
@@ -21,7 +38,7 @@ export default function AppEntry() {
       }, 2000);
       return;
     }
-    
+
     if (!sessionToken) {
       console.error('No session token provided');
       navigate("/lti-required", { replace: true });
@@ -30,19 +47,25 @@ export default function AppEntry() {
 
     window.history.replaceState(null, "", "/app");
 
+    // A fresh LTI launch must never inherit identity from a prior session.
+    // Wipe every auth-related key before validating the new token; otherwise
+    // a stale staff/instructor account can leak into the new student view
+    // and the user has to log in twice to see the correct account.
+    clearPriorAuthState();
+
     // Validate and store session token
     const validateSession = async () => {
       try {
         const response = await axios.get(
           `${LTI_API_URL}/lti/session/validate`,
-          { 
+          {
             headers: { Authorization: `Bearer ${sessionToken}` },
             timeout: 10000
           }
         );
-        
+
         console.log('Session validated successfully');
-        
+
         // Store session token for this browser tab only.
         sessionStorage.setItem('lti_session_token', sessionToken);
 
@@ -55,14 +78,17 @@ export default function AppEntry() {
         // Store user and course data for immediate access
         sessionStorage.setItem('lti_user', JSON.stringify(response.data.user));
         sessionStorage.setItem('lti_course', JSON.stringify(response.data.course));
-        
+
         // Also store in sessionStorage for compatibility with existing code
         sessionStorage.setItem('HVLABuserEmail', response.data.user.email);
         sessionStorage.setItem('HVLABuserFullName', response.data.user.name);
         sessionStorage.setItem('StudentID', response.data.user.user_id);
-        
-        // Navigate to home
-        navigate("/home", { replace: true });
+
+        // Hard reload into /home so LTIContext re-initializes from the
+        // freshly written sessionStorage. A SPA navigate() would keep the
+        // already-mounted context (with possibly stale user state) and the
+        // user would have to click again to see the correct account.
+        window.location.replace('/home');
       } catch (error) {
         console.error('Session validation failed:', error);
         setError('Session validation failed');
