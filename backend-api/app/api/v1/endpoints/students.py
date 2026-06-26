@@ -27,6 +27,9 @@ async def generate_signed_url(
         # Use local storage instead of GCS
         local_storage = get_local_storage()
         bucket_name = os.getenv('STORAGE_BUCKET_NAME', 'align-hvl-2024-release1')
+
+        if not local_storage.file_exists(bucket_name, blob_name):
+            raise HTTPException(status_code=404, detail="File not found")
         
         # Generate a local signed URL for the blob
         url = local_storage.generate_signed_url(

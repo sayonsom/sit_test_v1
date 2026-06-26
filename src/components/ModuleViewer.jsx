@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useEffect } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
-import { OrbitControls, Stage } from '@react-three/drei';
+import { Bounds, Center, OrbitControls } from '@react-three/drei';
 import axios from 'axios';
 import { Button } from 'flowbite-react';
 import * as THREE from 'three';
@@ -9,7 +9,19 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { API_URL } from "../env";
 
-const DRACO_DECODER_PATH = '/draco/';
+const DRACO_DECODER_PATH = import.meta.env.DEV ? '/draco/' : '/assets/draco/';
+
+function getModelErrorMessage(error) {
+  if (error?.response?.status === 404) {
+    return 'The configured 3D model file is missing from storage.';
+  }
+
+  if (error?.response?.status === 403) {
+    return 'The 3D model file could not be accessed.';
+  }
+
+  return error?.message || 'The model file may not be available in this environment.';
+}
 
 function resolveSignedUrl(fileUrl) {
   if (!fileUrl) return '';
@@ -62,7 +74,7 @@ function ModuleViewer({ url }) {
       console.log("Signed URL for 3D Model: " + resolvedUrl);
     } catch (error) {
       console.error("Error generating signed URL", error);
-      setError(error);
+      setError(new Error(getModelErrorMessage(error)));
     }
   };
 
@@ -118,19 +130,24 @@ function ModuleViewer({ url }) {
         <TbAugmentedReality2 className="ml-2" />
       </Button>
 
-      <Canvas shadows dpr={[1, 2]} camera={{ fov: 50 }}>
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 1.5, 6], fov: 50 }}>
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[5, 5, 5]} intensity={1.4} castShadow />
+        <directionalLight position={[-4, 3, -3]} intensity={0.6} />
         <Suspense
           fallback={
             <mesh position-y={0.5} scale={[2, 3, 2]}>
               <boxGeometry args={[1, 1, 1, 2, 2, 2]} />
             </mesh>
           }>
-          <Stage controls={ref} preset="rembrandt" intensity={1} environment="city">
-            {signedUrl ? <Model3D key={signedUrl} url={signedUrl} /> : null}
-          </Stage>
+          <Bounds fit clip observe margin={1.2}>
+            <Center>
+              {signedUrl ? <Model3D key={signedUrl} url={signedUrl} /> : null}
+            </Center>
+          </Bounds>
         </Suspense>
 
-        <OrbitControls ref={ref} />
+        <OrbitControls ref={ref} makeDefault />
         <Background />
       </Canvas>
     </div>
