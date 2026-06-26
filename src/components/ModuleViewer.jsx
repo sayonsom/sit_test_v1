@@ -7,9 +7,8 @@ import * as THREE from 'three';
 import { TbAugmentedReality2 } from "react-icons/tb";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import dracoDecoder from 'three/examples/jsm/libs/draco/draco_decoder.js?raw';
 import { API_URL } from "../env";
-
-const DRACO_DECODER_PATH = import.meta.env.DEV ? '/draco/' : '/assets/draco/';
 
 function getModelErrorMessage(error) {
   if (error?.response?.status === 404) {
@@ -41,8 +40,14 @@ function resolveSignedUrl(fileUrl) {
 function Model3D({ url }) {
   const gltf = useLoader(GLTFLoader, url, (loader) => {
     const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath(DRACO_DECODER_PATH);
     dracoLoader.setDecoderConfig({ type: 'js' });
+    dracoLoader._loadLibrary = (libraryUrl) => {
+      if (libraryUrl === 'draco_decoder.js') {
+        return Promise.resolve(dracoDecoder);
+      }
+
+      return Promise.reject(new Error(`Unsupported Draco decoder asset: ${libraryUrl}`));
+    };
     dracoLoader.preload();
     loader.setDRACOLoader(dracoLoader);
   });
