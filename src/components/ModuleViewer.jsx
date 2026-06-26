@@ -9,10 +9,29 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { API_URL } from "../env";
 
+const DRACO_DECODER_PATH = '/draco/';
+
+function resolveSignedUrl(fileUrl) {
+  if (!fileUrl) return '';
+
+  if (typeof window === 'undefined') {
+    return fileUrl;
+  }
+
+  try {
+    const apiOrigin = new URL(API_URL || window.location.origin, window.location.origin).origin;
+    return new URL(fileUrl, apiOrigin).toString();
+  } catch (error) {
+    return fileUrl;
+  }
+}
+
 function Model3D({ url }) {
   const gltf = useLoader(GLTFLoader, url, (loader) => {
     const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+    dracoLoader.setDecoderPath(DRACO_DECODER_PATH);
+    dracoLoader.setDecoderConfig({ type: 'js' });
+    dracoLoader.preload();
     loader.setDRACOLoader(dracoLoader);
   });
   return <primitive object={gltf.scene} />;
@@ -26,10 +45,21 @@ function ModuleViewer({ url }) {
   const apiUrl = API_URL;
 
   const getSignedUrl = async () => {
+    if (!url) {
+      setError(new Error('No model file configured for this module.'));
+      setSignedUrl('');
+      return;
+    }
+
     try {
-      const response = await axios.get(`${apiUrl}/generate-signed-url/?blob_name=${url}`);
-      setSignedUrl(response.data.url);
-      console.log("Signed URL for 3D Model: " + response.data.url);
+      setError(null);
+      setSignedUrl('');
+      const response = await axios.get(`${apiUrl}/generate-signed-url/`, {
+        params: { blob_name: url },
+      });
+      const resolvedUrl = resolveSignedUrl(response.data.url);
+      setSignedUrl(resolvedUrl);
+      console.log("Signed URL for 3D Model: " + resolvedUrl);
     } catch (error) {
       console.error("Error generating signed URL", error);
       setError(error);
@@ -75,7 +105,7 @@ function ModuleViewer({ url }) {
       <div className="relative w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
         <div className="text-center text-gray-500 dark:text-gray-300">
           <p className="text-lg font-medium">3D model could not be loaded</p>
-          <p className="text-sm mt-2">The model file may not be available in this environment.</p>
+          <p className="text-sm mt-2">{error.message || 'The model file may not be available in this environment.'}</p>
         </div>
       </div>
     );
@@ -96,7 +126,7 @@ function ModuleViewer({ url }) {
             </mesh>
           }>
           <Stage controls={ref} preset="rembrandt" intensity={1} environment="city">
-            {signedUrl ? <Model3D url={signedUrl} /> : null}
+            {signedUrl ? <Model3D key={signedUrl} url={signedUrl} /> : null}
           </Stage>
         </Suspense>
 

@@ -1,20 +1,10 @@
 'use client';
 
-import { Button, Modal, Select } from 'flowbite-react';
-import { useState } from 'react';
+import { Button, Modal } from 'flowbite-react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 
 export default function LineGraphModal( { openModal, setOpenModal, xAxis, yAxis, previousYAxis , previousSettingsLabel, xAxisLabel, yAxisLabel, title} ) {
-
-    const handleIhaveADoubt = () => {
-      // go to a new url in a new tab
-      window.open('https://docs.google.com/forms/d/1ZVxx4i3v4U2ox8DWcHIfqB3UEq3OMemw3ESwFFpC4FI', '_blank');
-      // set the modal to close
-      setOpenModal(false);
-    }
-
-  
     return (
       <>
 
@@ -59,9 +49,6 @@ export default function LineGraphModal( { openModal, setOpenModal, xAxis, yAxis,
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={() => setOpenModal(false)}>Okay</Button>
-            <Button color="gray" onClick={handleIhaveADoubt}>
-              I have a doubt
-            </Button>
           </Modal.Footer>
         </Modal>
       </>

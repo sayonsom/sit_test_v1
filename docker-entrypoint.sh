@@ -34,7 +34,8 @@ mkdir -p /etc/nginx/conf.d /etc/nginx/snippets
 CSP_FRAME_ANCESTORS="$(escape_nginx_header "${CSP_FRAME_ANCESTORS:-'self' https://hvlabonline-uat.singaporetech.edu.sg}")"
 CSP_CONNECT_SRC="$(escape_nginx_header "${CSP_CONNECT_SRC:-'self' https://maps.googleapis.com https://api.mapbox.com https://events.mapbox.com}")"
 CSP_FRAME_SRC="$(escape_nginx_header "${CSP_FRAME_SRC:-https://www.youtube.com https://www.youtube-nocookie.com https://docs.google.com}")"
-CSP_VALUE="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src ${CSP_CONNECT_SRC}; frame-src ${CSP_FRAME_SRC}; object-src 'none'; base-uri 'self'; frame-ancestors ${CSP_FRAME_ANCESTORS}"
+CSP_WORKER_SRC="$(escape_nginx_header "${CSP_WORKER_SRC:-'self' blob:}")"
+CSP_VALUE="default-src 'self'; script-src 'self'; worker-src ${CSP_WORKER_SRC}; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src ${CSP_CONNECT_SRC}; frame-src ${CSP_FRAME_SRC}; object-src 'none'; base-uri 'self'; frame-ancestors ${CSP_FRAME_ANCESTORS}"
 CSP_VALUE="$(escape_nginx_header "$CSP_VALUE")"
 
 cat > "$SECURITY_HEADERS_CONF" <<NGINX

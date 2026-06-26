@@ -64,6 +64,7 @@ if [ -d /3d_models_src ]; then\n\
   mkdir -p "$BUCKET_DIR/exp4_partial_discharge"\n\
   mkdir -p "$BUCKET_DIR/exp5_transient_recovery_voltage"\n\
   [ -f /3d_models_src/ferranti_effect.glb ] && cp -n /3d_models_src/ferranti_effect.glb "$BUCKET_DIR/exp3_ferranti_effect/ferranti_effect.glb"\n\
+  [ -f /3d_models_src/impulse_voltage_generator.glb ] && cp -n /3d_models_src/impulse_voltage_generator.glb "$BUCKET_DIR/exp1_impulse_voltage_generator/impulse_voltage_generator.glb"\n\
   [ -f /3d_models_src/impulse_voltage_generator.glb ] && cp -n /3d_models_src/impulse_voltage_generator.glb "$BUCKET_DIR/exp1_impulse_voltage_generator/impulse_voltage_generator.gltf"\n\
   [ -f /3d_models_src/cockroft-walton.glb ] && cp -n /3d_models_src/cockroft-walton.glb "$BUCKET_DIR/exp2_3stage_cockroft_walton/cockroft-walton.glb"\n\
   [ -f /3d_models_src/partialDischarge.glb ] && cp -n /3d_models_src/partialDischarge.glb "$BUCKET_DIR/exp4_partial_discharge/partialDischarge.glb"\n\

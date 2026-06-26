@@ -46,7 +46,7 @@ VALUES
  'exp1_impulse_voltage_generator/ImpulseVoltageTheory_v1.md',
  'An impulse voltage generator is a device used to generate high-voltage, short-duration impulses for testing the insulation and dielectric strength of electrical equipment. It consists of a charging circuit, a capacitor bank for energy storage, and a switching mechanism (usually a spark gap) to rapidly discharge the stored energy.',
  'The impulse voltage generator has a fascinating origin story that dates back to the early 20th century.',
- 'exp1_impulse_voltage_generator/impulse_voltage_generator.gltf', NULL, NULL, NULL,
+ 'exp1_impulse_voltage_generator/impulse_voltage_generator.glb', NULL, NULL, NULL,
  'https://youtu.be/3UTMNrraACk?si=M34HvRD6UCPQYvNG', NULL,
  'exp1_impulse_voltage_generator/exp1_impulse_voltage_generator_config.json', NULL),
 
