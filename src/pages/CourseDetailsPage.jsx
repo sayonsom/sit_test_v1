@@ -16,6 +16,7 @@ export default function CourseDetailsPage() {
     const { courseShortCode } = useParams();
   const [course, setCourse] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
   const { authMethod } = useLTI();
   const isStaff = authMethod === 'staff';
 
@@ -29,7 +30,11 @@ export default function CourseDetailsPage() {
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching course details', error);
-        alert("Error fetching course details", error);
+        const detail = error?.response?.data?.detail || error?.message || "Unknown error";
+        const status = error?.response?.status;
+        setErrorMessage(
+          status ? `Could not load course ${courseShortCode} (${status}): ${detail}` : `Could not load course ${courseShortCode}: ${detail}`
+        );
         setIsLoading(false);
       }
     };
@@ -45,6 +50,22 @@ export default function CourseDetailsPage() {
                 <div className="max-w-md w-full space-y-8">
                     <div className="flex flex-col items-center">
                         <Spinner />
+                    </div>
+                </div>
+            </AppLayout>
+        )
+    }
+
+    if (errorMessage) {
+        return (
+            <AppLayout>
+                <div className="mx-auto max-w-3xl px-6 py-10">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-red-800">
+                        <h1 className="text-lg font-semibold">Course could not be loaded</h1>
+                        <p className="mt-2 text-sm">{errorMessage}</p>
+                        <Link to="/home" className="mt-4 inline-block text-sm font-semibold text-red-900 underline">
+                            Back to courses
+                        </Link>
                     </div>
                 </div>
             </AppLayout>

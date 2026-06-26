@@ -51,6 +51,7 @@ STAFF_ALLOWED_EMAIL_DOMAIN=singaporetech.edu.sg
 STAFF_ALLOWED_EMAILS=
 STAFF_ALLOWED_ROLES=
 STAFF_ALLOWED_GROUP_IDS=
+STAFF_ADMIN_EMAILS=munhin.yong@singaporetech.edu.sg
 ```
 
 If `BACKEND_API_JWT_AUDIENCE` is set, set the same value on both `backend-api` and `backend-lti`.

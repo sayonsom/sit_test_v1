@@ -49,6 +49,29 @@ session_manager = SessionManager()
 staff_oidc_handler = StaffOIDCHandler()
 
 
+def _normalized_backend_roles(user_data: dict, auth_method: str) -> list[str]:
+    raw_roles = user_data.get("roles") or []
+    if isinstance(raw_roles, str):
+        raw_roles = [raw_roles]
+
+    roles = {
+        str(role).strip().lower()
+        for role in raw_roles
+        if str(role).strip()
+    }
+
+    if auth_method == "staff":
+        email = (user_data.get("email") or "").strip().lower()
+        if email in settings.staff_admin_emails_list:
+            roles.update({"admin", "teacher"})
+        if not roles:
+            roles.add("teacher")
+    elif auth_method == "lti" and not roles:
+        roles.add("student")
+
+    return sorted(roles)
+
+
 def create_backend_api_token(
     user_data: dict,
     course_data: Optional[dict] = None,
@@ -60,13 +83,9 @@ def create_backend_api_token(
         return None
 
     now = int(time.time())
-    roles = user_data.get("roles") or []
-    if isinstance(roles, str):
-        roles = [roles]
-    if auth_method == "staff" and not roles:
-        roles = ["teacher"]
-    if auth_method == "lti" and not roles:
-        roles = ["student"]
+    roles = _normalized_backend_roles(user_data, auth_method)
+    if auth_method == "staff":
+        user_data["roles"] = roles
 
     claims = {
         "sub": user_data.get("sub") or user_data.get("user_id") or user_data.get("email"),

@@ -77,6 +77,7 @@ class Settings(BaseSettings):
         "STAFF_ALLOWED_GROUP_IDS",
         os.getenv("AAD_ALLOWED_GROUP_IDS", ""),
     )
+    STAFF_ADMIN_EMAILS: str = os.getenv("STAFF_ADMIN_EMAILS", "")
 
     @staticmethod
     def _split_csv(raw: str) -> List[str]:
@@ -101,6 +102,10 @@ class Settings(BaseSettings):
         return self._split_csv(self.STAFF_ALLOWED_GROUP_IDS)
 
     @property
+    def staff_admin_emails_list(self) -> List[str]:
+        return [item.lower() for item in self._split_csv(self.STAFF_ADMIN_EMAILS)]
+
+    @property
     def staff_oidc_redirect_uri(self) -> str:
         if self.STAFF_OIDC_REDIRECT_URI:
             return self.STAFF_OIDC_REDIRECT_URI
@@ -123,6 +128,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 # Global settings instance

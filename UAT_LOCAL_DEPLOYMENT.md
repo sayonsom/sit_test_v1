@@ -50,6 +50,7 @@ REACT_APP_AAD_REDIRECT_URI=https://hvlabonline-uat.singaporetech.edu.sg/oauth2/c
 REACT_APP_AAD_SCOPES=openid
 REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=singaporetech.edu.sg
 REACT_APP_AAD_ALLOWED_EMAILS=dhivya.sampathkumar@singaporetech.edu.sg,munhin.yong@singaporetech.edu.sg,stlatest01@singaporetech.edu.sg,G12069@singaporetech.edu.sg
+STAFF_ADMIN_EMAILS=munhin.yong@singaporetech.edu.sg
 
 POSTGRES_DB=aligndb
 POSTGRES_USER=alignuser
@@ -83,6 +84,8 @@ docker compose --env-file .env.uat -f docker-compose.uat.yml build --pull
 docker compose --env-file .env.uat -f docker-compose.uat.yml up -d --remove-orphans
 docker compose --env-file .env.uat -f docker-compose.uat.yml ps
 ```
+
+Staff listed in `STAFF_ADMIN_EMAILS` must log out and sign in again after deployment so their refreshed `vhvl_api_token` includes the `admin` role.
 
 ## 4. Apply DB Hardening To Existing Volumes
 

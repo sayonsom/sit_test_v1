@@ -37,7 +37,7 @@ services:
       - backend-api
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/health >/dev/null"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,6 +75,7 @@ services:
       - STAFF_ALLOWED_EMAILS=${STAFF_ALLOWED_EMAILS:-${REACT_APP_AAD_ALLOWED_EMAILS:-}}
       - STAFF_ALLOWED_ROLES=${STAFF_ALLOWED_ROLES:-${REACT_APP_AAD_ALLOWED_ROLES:-}}
       - STAFF_ALLOWED_GROUP_IDS=${STAFF_ALLOWED_GROUP_IDS:-${REACT_APP_AAD_ALLOWED_GROUP_IDS:-}}
+      - STAFF_ADMIN_EMAILS=${STAFF_ADMIN_EMAILS:-munhin.yong@singaporetech.edu.sg}
       - DEBUG=${DEBUG:-false}
       - ENABLE_API_DOCS=${ENABLE_API_DOCS:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

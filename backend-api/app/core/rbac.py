@@ -118,7 +118,10 @@ async def require_course_read_access(
 ) -> None:
     if _is_privileged(actor):
         return
-    if actor.is_teacher and await is_course_teacher(conn, actor, course_id):
+    # Staff who pass the server-side AD allow-list may open course landing
+    # pages and course content. Roster/result reads and content mutations still
+    # call require_course_staff_access, which remains course-scoped.
+    if actor.is_teacher:
         return
     if actor.is_student and await is_student_enrolled(conn, actor, course_id):
         return

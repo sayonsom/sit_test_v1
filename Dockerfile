@@ -20,7 +20,7 @@ RUN npm run build
 # Production stage - Use nginx to serve the built app
 FROM nginx:alpine
 
-# Needed for proxying to HTTPS upstreams (Cloud Run)
+# Needed for proxying to HTTPS upstreams when configured.
 RUN apk add --no-cache ca-certificates
 
 # Copy custom nginx configuration
