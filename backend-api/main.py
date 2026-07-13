@@ -30,9 +30,6 @@ from app.api.v1.endpoints import (
     questions,
     responses,
 )
-from app.api.v1.endpoints.lti_routes import router as lti_router
-from app.api.v1.endpoints.session_routes import session as session_router
-
 import uvicorn
 import os
 
@@ -89,8 +86,6 @@ app.include_router(auth_routes.router, prefix="/api/v1", tags=["Auth"])
 
 app.include_router(questions.router, prefix="/api/v1", tags=["Questions"])
 app.include_router(responses.router, prefix="/api/v1", tags=["Responses"])
-app.include_router(lti_router)
-app.include_router(session_router)
 
 
 @app.get("/health")

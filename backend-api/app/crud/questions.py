@@ -26,7 +26,7 @@ def create_question(question: QuestionCreate):
     
     connection.commit()
     cursor.close()
-    return {"question_id": question_id, **question.dict()}
+    return {"question_id": question_id, **question.model_dump()}
 
 def get_questions_for_assignment(assignment_id: int):
     connection = get_db_connection()
@@ -57,7 +57,6 @@ def get_questions_for_assignment(assignment_id: int):
             questions[question_id]['options'].append(row['option_text'])
 
     return list(questions.values())
-
 
 
 

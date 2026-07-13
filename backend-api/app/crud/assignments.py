@@ -151,7 +151,7 @@ async def update_assignment(conn: Connection, assignment_id: int, assignment: As
     await conn.execute(sql_update, assignment.module_id, assignment.title, assignment.description, assignment.due_date, assignment_id)
     return {
         "assignment_id": assignment_id,
-        **assignment.dict(),
+        **assignment.model_dump(),
         "due_date": assignment.due_date.strftime("%Y-%m-%d")  # Format date if necessary
     }
 

@@ -18,10 +18,14 @@ router = APIRouter()
 MAX_CONTENT_UPLOAD_BYTES = int(os.getenv("MAX_CONTENT_UPLOAD_BYTES", "26214400"))
 ALLOWED_CONTENT_EXTENSIONS = {".md", ".json", ".js", ".glb", ".gltf", ".png", ".jpg", ".jpeg", ".pdf", ".csv"}
 
-# Initialize the asynchronous OpenAI client from environment variable
-async_openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+def get_openai_client() -> AsyncOpenAI:
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI text service is not configured")
+    return AsyncOpenAI(api_key=api_key)
 
 async def rephrase_text_with_openai(text: str) -> str:
+    async_openai_client = get_openai_client()
     list_of_prompts = ["analogy", "example", "metaphor", "simile"]
     chat_completion = await async_openai_client.chat.completions.create(
         messages=[
@@ -35,6 +39,7 @@ async def rephrase_text_with_openai(text: str) -> str:
     return response_message
 
 async def fun_fact_finding_with_openai(text: str) -> str:
+    async_openai_client = get_openai_client()
     list_of_prompts = ["Who invented discovered the concept", "The origin story", "Make it relevant to Singapore and tell something ", "Do you something about the worlds largest or smallest example", "Tell something interesting", "From when did people start using"]
     chat_completion = await async_openai_client.chat.completions.create(
         messages=[
@@ -56,8 +61,10 @@ async def rephrase(
         # Since FastAPI supports asynchronous functions, you can await the rephrasing function directly
         rephrased_text = await rephrase_text_with_openai(text)
         return {"rephrased_text": rephrased_text}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Could not generate rephrased text")
     
 
 @router.post("/funfact/")
@@ -69,8 +76,10 @@ async def funfact(
         # Since FastAPI supports asynchronous functions, you can await the fun fact function directly
         fun_fact = await fun_fact_finding_with_openai(text)
         return {"fun_fact": fun_fact}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Could not generate fun fact")
 
 
 # Endpoint to create a new module

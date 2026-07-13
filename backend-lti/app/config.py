@@ -7,15 +7,28 @@ from typing import List
 from pydantic_settings import BaseSettings
 
 
+_PLACEHOLDER_MARKERS = (
+    "replace_with",
+    "changeme",
+    "change_me",
+    "<",
+    ">",
+)
+
+
 class Settings(BaseSettings):
     """Application settings"""
     
     # LTI 1.3 Configuration
     CLIENT_ID: str = os.getenv("CLIENT_ID", "")
+    LTI_CLIENT_IDS: str = os.getenv("LTI_CLIENT_IDS", "")
     DEPLOYMENT_ID: str = os.getenv("DEPLOYMENT_ID", "")
+    LTI_DEPLOYMENT_IDS: str = os.getenv("LTI_DEPLOYMENT_IDS", "")
     ISSUER: str = os.getenv("ISSUER", "")
     AUTHORIZATION_ENDPOINT: str = os.getenv("AUTHORIZATION_ENDPOINT", "")
     KEY_SET_URL: str = os.getenv("KEY_SET_URL", "")
+    LTI_CLOCK_SKEW_SECONDS: int = int(os.getenv("LTI_CLOCK_SKEW_SECONDS", "60"))
+    LTI_JWKS_TIMEOUT_SECONDS: int = int(os.getenv("LTI_JWKS_TIMEOUT_SECONDS", "10"))
     
     # Tool Configuration
     TOOL_URL: str = os.getenv("TOOL_URL", "http://localhost:8000")
@@ -38,7 +51,7 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> List[str]:
         """Parse comma-separated ALLOWED_ORIGINS into list"""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(',')]
+        return self._split_csv(self.ALLOWED_ORIGINS)
     
     # Application Settings
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
@@ -82,6 +95,44 @@ class Settings(BaseSettings):
     @staticmethod
     def _split_csv(raw: str) -> List[str]:
         return [item.strip() for item in raw.split(",") if item.strip()]
+
+    @staticmethod
+    def _is_configured_value(value: str) -> bool:
+        normalized = value.strip().lower()
+        return bool(normalized) and not any(marker in normalized for marker in _PLACEHOLDER_MARKERS)
+
+    @property
+    def lti_client_ids_list(self) -> List[str]:
+        values = self._split_csv(self.LTI_CLIENT_IDS)
+        if not values and self.CLIENT_ID.strip():
+            values = [self.CLIENT_ID.strip()]
+        return list(dict.fromkeys(values))
+
+    @property
+    def lti_deployment_ids_list(self) -> List[str]:
+        values = self._split_csv(self.LTI_DEPLOYMENT_IDS)
+        if not values and self.DEPLOYMENT_ID.strip():
+            values = [self.DEPLOYMENT_ID.strip()]
+        return list(dict.fromkeys(values))
+
+    @property
+    def lti_configuration_errors(self) -> List[str]:
+        checks = {
+            "client_id": [self.CLIENT_ID],
+            "client_id_allowlist": self.lti_client_ids_list,
+            "deployment_id": [self.DEPLOYMENT_ID],
+            "deployment_id_allowlist": self.lti_deployment_ids_list,
+            "issuer": [self.ISSUER],
+            "authorization_endpoint": [self.AUTHORIZATION_ENDPOINT],
+            "key_set_url": [self.KEY_SET_URL],
+            "tool_url": [self.TOOL_URL],
+            "frontend_url": [self.FRONTEND_URL],
+        }
+        return [
+            name
+            for name, values in checks.items()
+            if not values or any(not self._is_configured_value(value) for value in values)
+        ]
 
     @property
     def staff_oidc_scopes_list(self) -> List[str]:
