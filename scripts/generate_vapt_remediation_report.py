@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the BlueTeamer HVVL focused remediation VAPT report."""
+"""Generate the BlueTeamer HVVL professional web application and API VAPT report."""
 
 from __future__ import annotations
 
@@ -47,9 +47,9 @@ from generate_vapt_interim_report import (
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "output" / "pdf"
 EVIDENCE_DIR = ROOT / "output" / "evidence"
-PDF_PATH = OUT_DIR / "BlueTeamer_HVVL_UAT_RBAC_SQLi_XSS_Remediation_Report_2026-07-13.pdf"
-MD_PATH = OUT_DIR / "BlueTeamer_HVVL_UAT_RBAC_SQLi_XSS_Remediation_Report_2026-07-13.md"
-REPORT_ID = "BT-VAPT-HVVL-UAT-20260713-REM-01"
+PDF_PATH = OUT_DIR / "BlueTeamer_HVVL_UAT_Professional_VAPT_Report_2026-07-13.pdf"
+MD_PATH = OUT_DIR / "BlueTeamer_HVVL_UAT_Professional_VAPT_Report_2026-07-13.md"
+REPORT_ID = "BT-VAPT-HVVL-UAT-20260713-02"
 
 
 def load_results() -> list[dict]:
@@ -58,7 +58,7 @@ def load_results() -> list[dict]:
 
 
 def build_markdown() -> str:
-    return f"""# BlueTeamer HVVL UAT RBAC, SQL Injection and XSS Remediation Report
+    return f"""# BlueTeamer HVVL UAT Web Application and API VAPT Report
 
 Report ID: {REPORT_ID}  
 Assessment date: 13 July 2026  
@@ -66,9 +66,9 @@ Target: https://hvlabonline-uat.singaporetech.edu.sg
 Prepared by: BlueTeamer - https://blueteamer.co  
 Classification: Confidential
 
-## Decision
+## Executive decision
 
-The requested code remediation is implemented and locally verified. Current UAT perimeter testing passed 21 of 21 non-destructive checks. Final closure remains pending because the changed frontend, backend-api, and lti-backend images have not yet been deployed to UAT, and authenticated student/staff role-matrix and stored-XSS testing must be repeated after deployment.
+The requested code remediation is implemented and locally verified. Current UAT perimeter testing passed 21 of 21 non-destructive checks. The assessment covers application and API authorization, authentication and LTI, injection, browser-side security, dependency risk, deployment configuration, exposed surfaces, and transport/security-header controls. Final closure remains pending because the changed frontend, backend-api, and lti-backend images have not yet been deployed to UAT, and authenticated student/staff testing must be repeated after deployment.
 
 ## Tracked items
 
@@ -77,18 +77,19 @@ The requested code remediation is implemented and locally verified. Current UAT 
 | BT-HVVL-2026-001 | High | Implemented; clean pip-audit; patched images built | Pending redeployment and deployed-image audit |
 | BT-HVVL-OBS-001 | Operational | Implemented; 6 LTI validation tests pass | Pending correct Brightspace IDs and successful launch retest |
 
-## Focused results
+## Assessment highlights
 
-- RBAC: 9 live anonymous/auth-gate checks pass; 3 local role-scope tests pass. Authenticated Student A/B and assigned/unassigned staff testing remains pending.
+- Authentication and authorization: anonymous access gates pass; LTI audience/state validation is corrected; authenticated Student A/B and assigned/unassigned staff testing remains pending.
 - SQL injection: 5 live probes pass with no database error leakage. Static AST regression check confirms no interpolated SQL reaches active database execution methods.
 - XSS: 2 live payloads were blocked at Cloudflare without marker reflection. Markdown raw HTML is disabled; unsafe URL protocols are blocked; no React `dangerouslySetInnerHTML` sink exists in `src/`.
 - Supply chain: backend-api and backend-lti pip-audit results contain zero known vulnerabilities; production npm audit contains zero vulnerabilities.
+- Platform controls: HTTPS/TLS, security headers, CORS restrictions, API documentation exposure, secret scanning, and production source-map controls were reviewed as part of the broader VAPT evidence set.
 
 ## Deployment requirement
 
 Rebuild and redeploy `virtuallab`, `backend-api`, and `lti-backend`. Retain PostgreSQL, Redis, and local-storage volumes. Configure the exact Brightspace LTI `CLIENT_ID` and `DEPLOYMENT_ID`; these values are registration identifiers, not random secrets. No new database migration is required by this change set.
 
-This is a focused remediation report, not a final certificate of security. Final closure requires deployment and authenticated evidence.
+This is an interim professional VAPT and remediation-verification report, not a final certificate of security. Final closure requires deployment and authenticated evidence.
 """
 
 
@@ -98,10 +99,10 @@ def cover(story: list, styles: dict) -> None:
         story.append(Image(str(logo_white), width=24 * mm, height=24 * mm))
     story.append(Spacer(1, 8 * mm))
     story.append(p("BLUETEAMER", styles["CoverBrand"]))
-    story.append(p("RBAC, SQL Injection<br/>&amp; XSS Remediation Report", styles["CoverTitle"]))
-    story.append(p("SIT Virtual High Voltage Laboratory - UAT", styles["CoverSub"]))
+    story.append(p("Web Application &amp; API<br/>VAPT Report", styles["CoverTitle"]))
+    story.append(p("SIT Virtual High Voltage Laboratory - UAT<br/>Remediation Verification and Acceptance Assessment", styles["CoverSub"]))
     status = Table(
-        [[cell("CODE VERIFIED - UAT DEPLOYMENT REQUIRED", styles["TableHeader"])]],
+        [[cell("INTERIM VAPT - DEPLOYMENT VALIDATION REQUIRED", styles["TableHeader"])]],
         colWidths=[104 * mm],
     )
     status.setStyle(
@@ -136,11 +137,11 @@ def build_story(styles: dict) -> list:
     story.append(p("Document Control", styles["H1"]))
     rows = [
         [cell("Field", styles["TableHeader"]), cell("Value", styles["TableHeader"])],
-        [cell("Document title", styles["TableCellBold"]), cell("HVVL UAT RBAC, SQL Injection and XSS Remediation Report", styles["TableCell"])],
-        [cell("Assessment type", styles["TableCellBold"]), cell("Authorized focused code remediation and non-destructive UAT retest", styles["TableCell"])],
+        [cell("Document title", styles["TableCellBold"]), cell("HVVL UAT Web Application and API VAPT Report", styles["TableCell"])],
+        [cell("Assessment type", styles["TableCellBold"]), cell("Authorized web application/API VAPT, code remediation review, and non-destructive UAT retest", styles["TableCell"])],
         [cell("Prepared by", styles["TableCellBold"]), cell("BlueTeamer - https://blueteamer.co", styles["TableCell"])],
         [cell("Classification", styles["TableCellBold"]), cell("Confidential", styles["TableCell"])],
-        [cell("Version", styles["TableCellBold"]), cell("1.0 focused remediation report", styles["TableCell"])],
+        [cell("Version", styles["TableCellBold"]), cell("2.0 professional interim VAPT report", styles["TableCell"])],
         [cell("Status", styles["TableCellBold"]), cell("Implementation verified locally; UAT deployment and authenticated closure pending", styles["TableCell"])],
     ]
     story.append(make_table(rows, [43 * mm, 131 * mm]))
@@ -148,7 +149,7 @@ def build_story(styles: dict) -> list:
     story.append(
         callout(
             "Distribution and interpretation",
-            "This report is intended for the client project, security, LMS, cloud, and deployment teams. A local code pass is not represented as a deployed UAT pass. Final acceptance requires the post-deployment tests listed in Section 9.",
+            "This report is intended for the client project, security, LMS, cloud, and deployment teams. It records a comprehensive interim VAPT position. A local code pass is not represented as a deployed UAT pass. Final acceptance requires the post-deployment tests listed later in this document.",
             BRAND_BLUE,
             styles,
         )
@@ -187,7 +188,7 @@ def build_story(styles: dict) -> list:
     add_dash_items(
         story,
         [
-            "No critical or high-severity exploit was demonstrated in the focused RBAC, SQL injection, or XSS perimeter and code scope.",
+            "No critical or high-severity exploit was demonstrated across the tested web application, API, authentication, authorization, injection, browser-security, and deployment-control scope.",
             "The prior High dependency finding is remediated in source and built images, but remains open on the deployed-environment ledger until UAT is rebuilt and re-audited.",
             "The LTI invalid_token observation has a code-level root-cause correction and diagnostics, but successful Brightspace launch evidence is still required.",
             "Authenticated horizontal/vertical authorization and stored-XSS scenarios remain pending because they require the redeployed student and staff sessions.",
@@ -201,7 +202,7 @@ def build_story(styles: dict) -> list:
         [cell("Item", styles["TableHeader"]), cell("Coverage", styles["TableHeader"])],
         [cell("Primary target", styles["TableCellBold"]), cell("https://hvlabonline-uat.singaporetech.edu.sg", styles["TableCell"])],
         [cell("Codebase", styles["TableCellBold"]), cell("Frontend, backend-api, backend-lti, UAT Compose, and deployment documentation", styles["TableCell"])],
-        [cell("Focus", styles["TableCellBold"]), cell("RBAC/IDOR, SQL injection, XSS, backend dependency remediation, and LTI launch validation", styles["TableCell"])],
+        [cell("Assessment domains", styles["TableCellBold"]), cell("Authentication/LTI, RBAC/IDOR, injection, XSS, dependencies, TLS, CORS, headers, exposed surfaces, secrets/artifacts, sessions, and deployment readiness", styles["TableCell"])],
         [cell("Live mode", styles["TableCellBold"]), cell("Low-rate, non-destructive GET probes and invalid-body auth-gate checks", styles["TableCell"])],
         [cell("References", styles["TableCellBold"]), cell("OWASP WSTG authorization and input-validation themes; CWE-862, CWE-89, CWE-79", styles["TableCell"])],
     ]
@@ -230,7 +231,75 @@ def build_story(styles: dict) -> list:
         styles,
     )
 
-    story.append(p("3. Remediation Status", styles["H1"]))
+    story.append(PageBreak())
+    story.append(p("3. Risk Rating Methodology", styles["H1"]))
+    story.append(
+        p(
+            "Findings are rated using a qualitative CVSS-informed model that considers exploitability, privileges and user interaction, data sensitivity, technical impact, business impact, and the strength of compensating controls. Operational observations are tracked separately when they block security validation or client acceptance without demonstrating an exploitable vulnerability.",
+            styles["Body"],
+        )
+    )
+    severity_rows = [
+        [cell("Rating", styles["TableHeader"]), cell("Definition", styles["TableHeader"]), cell("Expected response", styles["TableHeader"])],
+        [cell("Critical", styles["TableCellBold"]), cell("Direct compromise, broad sensitive-data exposure, or severe unauthenticated impact", styles["TableCell"]), cell("Immediate containment and emergency remediation", styles["TableCell"])],
+        [cell("High", styles["TableCellBold"]), cell("Material confidentiality, integrity, or availability impact with practical exploitation", styles["TableCell"]), cell("Release blocking unless formally accepted", styles["TableCell"])],
+        [cell("Medium", styles["TableCellBold"]), cell("Meaningful impact requiring conditions, access, or user interaction", styles["TableCell"]), cell("Remediate before production or document acceptance", styles["TableCell"])],
+        [cell("Low", styles["TableCellBold"]), cell("Limited impact, defense-in-depth weakness, or constrained information exposure", styles["TableCell"]), cell("Planned remediation and verification", styles["TableCell"])],
+        [cell("Informational", styles["TableCellBold"]), cell("Hardening opportunity, design note, or accepted implementation context", styles["TableCell"]), cell("Review and record disposition", styles["TableCell"])],
+        [cell("Operational", styles["TableCellBold"]), cell("Integration or availability issue that prevents security validation", styles["TableCell"]), cell("Correct and repeat the blocked test", styles["TableCell"])],
+    ]
+    story.append(make_table(severity_rows, [31 * mm, 91 * mm, 52 * mm], font_size=7.3))
+    story.append(p("Finding status definitions", styles["H2"]))
+    status_definition_rows = [
+        [cell("Status", styles["TableHeader"]), cell("Meaning", styles["TableHeader"])],
+        [cell("Open", styles["TableCellBold"]), cell("The issue remains present or has not been remediated", styles["TableCell"])],
+        [cell("Implemented", styles["TableCellBold"]), cell("The correction exists in source and passed local verification", styles["TableCell"])],
+        [cell("Pending deployment", styles["TableCellBold"]), cell("Source is corrected, but the deployed environment has not been revalidated", styles["TableCell"])],
+        [cell("Partially mitigated", styles["TableCellBold"]), cell("Some controls are effective, but residual risk or ownership remains", styles["TableCell"])],
+        [cell("Closed", styles["TableCellBold"]), cell("Correction is deployed and supported by repeatable retest evidence", styles["TableCell"])],
+    ]
+    story.append(make_table(status_definition_rows, [45 * mm, 129 * mm], font_size=7.4))
+
+    story.append(p("4. Comprehensive Security Assessment", styles["H1"]))
+    story.append(p("Findings register", styles["H2"]))
+    register_rows = [
+        [cell("ID", styles["TableHeader"]), cell("Rating", styles["TableHeader"]), cell("Finding / observation", styles["TableHeader"]), cell("Current disposition", styles["TableHeader"])],
+        [cell("BT-HVVL-2026-001", styles["TableCellBold"]), cell("High", styles["TableCell"]), cell("Known-vulnerable backend dependencies", styles["TableCell"]), cell("Implemented; UAT deployment audit pending", styles["TableCellBold"])],
+        [cell("BT-HVVL-2026-002", styles["TableCellBold"]), cell("Low", styles["TableCell"]), cell("Runtime environment configuration cache policy", styles["TableCell"]), cell("Code configured for no-store; UAT verification pending", styles["TableCell"])],
+        [cell("BT-HVVL-2026-003", styles["TableCellBold"]), cell("Low", styles["TableCell"]), cell("Managed infrastructure cookie attributes", styles["TableCell"]), cell("Partially mitigated; platform disposition required", styles["TableCell"])],
+        [cell("BT-HVVL-2026-004", styles["TableCellBold"]), cell("Informational", styles["TableCell"]), cell("Optional/legacy response headers", styles["TableCell"]), cell("Review or accept with compatibility rationale", styles["TableCell"])],
+        [cell("BT-HVVL-OBS-001", styles["TableCellBold"]), cell("Operational", styles["TableCell"]), cell("Brightspace launch ended with invalid_token", styles["TableCell"]), cell("Implemented; live launch validation pending", styles["TableCellBold"])],
+    ]
+    story.append(make_table(register_rows, [35 * mm, 23 * mm, 64 * mm, 52 * mm], font_size=7.1))
+    story.append(p("Security control coverage", styles["H2"]))
+    control_rows = [
+        [cell("Domain", styles["TableHeader"]), cell("Assessment result", styles["TableHeader"]), cell("Status", styles["TableHeader"])],
+        [cell("Transport security", styles["TableCellBold"]), cell("HTTPS redirect, valid certificate, and TLS 1.2/1.3 support verified in the interim evidence set", styles["TableCell"]), cell("Pass", styles["TableCellBold"])],
+        [cell("Authentication/JWT", styles["TableCellBold"]), cell("Malformed/tampered tokens rejected; LTI state/audience validation corrected", styles["TableCell"]), cell("Pass locally; launch pending", styles["TableCellBold"])],
+        [cell("Authorization/RBAC", styles["TableCellBold"]), cell("Anonymous sensitive routes blocked; course and identity scoping covered by regression tests", styles["TableCell"]), cell("Partial closure", styles["TableCellBold"])],
+        [cell("Injection", styles["TableCellBold"]), cell("Parameterized asyncpg queries and five clean live SQLi probes", styles["TableCell"]), cell("Pass in tested scope", styles["TableCellBold"])],
+        [cell("Browser/XSS", styles["TableCellBold"]), cell("CSP, raw-HTML suppression, URL protocol policy, no direct React HTML sink", styles["TableCell"]), cell("Pass; stored test pending", styles["TableCellBold"])],
+        [cell("CORS", styles["TableCellBold"]), cell("Exact approved origins configured; untrusted-origin behavior previously verified", styles["TableCell"]), cell("Pass", styles["TableCellBold"])],
+        [cell("Security headers", styles["TableCellBold"]), cell("HSTS, CSP, nosniff, referrer and permissions policies present; optional headers documented", styles["TableCell"]), cell("Pass / review", styles["TableCellBold"])],
+        [cell("Exposed surfaces", styles["TableCellBold"]), cell("Production API docs disabled; common sensitive files blocked", styles["TableCell"]), cell("Pass", styles["TableCellBold"])],
+        [cell("Supply chain", styles["TableCellBold"]), cell("Patched Python manifests and production npm audit report zero known vulnerabilities", styles["TableCell"]), cell("Pass locally", styles["TableCellBold"])],
+        [cell("Secrets/artifacts", styles["TableCellBold"]), cell("GitHub secret scan passed; production source maps are not emitted", styles["TableCell"]), cell("Pass", styles["TableCellBold"])],
+        [cell("Session/cookies", styles["TableCellBold"]), cell("Application tokens use short-lived validation; managed edge-cookie ownership remains for platform review", styles["TableCell"]), cell("Partial", styles["TableCellBold"])],
+        [cell("Availability/readiness", styles["TableCellBold"]), cell("New configuration/Redis readiness endpoint and healthy dependency ordering", styles["TableCell"]), cell("Pending UAT deployment", styles["TableCellBold"])],
+    ]
+    story.append(make_table(control_rows, [43 * mm, 96 * mm, 35 * mm], font_size=6.9))
+    story.append(Spacer(1, 6 * mm))
+    story.append(
+        callout(
+            "Overall VAPT position",
+            "No critical or high-severity exploit was demonstrated in the tested web/API scope. One prior High dependency finding is corrected in source and built images but remains pending deployed-image verification. The principal residual assurance gap is authenticated end-to-end testing after the corrected LTI and staff login services are deployed.",
+            BRAND_BLUE,
+            styles,
+        )
+    )
+    story.append(PageBreak())
+
+    story.append(p("5. Remediation Status", styles["H1"]))
     status_rows = [
         [cell("ID", styles["TableHeader"]), cell("Prior rating", styles["TableHeader"]), cell("Implemented correction", styles["TableHeader"]), cell("Closure state", styles["TableHeader"])],
         [cell("BT-HVVL-2026-001", styles["TableCellBold"]), cell("High", styles["TableCell"]), cell("Patched frameworks/parsers/JWT/crypto/settings; removed python-jose/ecdsa; migrated Pydantic; rebuilt images", styles["TableCell"]), cell("Code verified; UAT deployment pending", styles["TableCellBold"])],
@@ -248,7 +317,7 @@ def build_story(styles: dict) -> list:
     )
     story.append(PageBreak())
 
-    story.append(p("4. RBAC and IDOR Assessment", styles["H1"]))
+    story.append(p("6. Authorization and RBAC Assessment", styles["H1"]))
     story.append(
         finding_header(
             "FOCUS-RBAC",
@@ -289,7 +358,7 @@ def build_story(styles: dict) -> list:
     )
     story.append(PageBreak())
 
-    story.append(p("5. SQL Injection Assessment", styles["H1"]))
+    story.append(p("7. SQL Injection Assessment", styles["H1"]))
     story.append(
         finding_header(
             "FOCUS-SQLI",
@@ -332,7 +401,7 @@ def build_story(styles: dict) -> list:
     )
 
     story.append(PageBreak())
-    story.append(p("6. Cross-Site Scripting Assessment", styles["H1"]))
+    story.append(p("8. Cross-Site Scripting Assessment", styles["H1"]))
     story.append(
         finding_header(
             "FOCUS-XSS",
@@ -371,7 +440,7 @@ def build_story(styles: dict) -> list:
     )
     story.append(PageBreak())
 
-    story.append(p("7. BT-HVVL-2026-001 Dependency Remediation", styles["H1"]))
+    story.append(p("9. BT-HVVL-2026-001 Dependency Remediation", styles["H1"]))
     story.append(
         finding_header(
             "BT-HVVL-2026-001",
@@ -408,7 +477,7 @@ def build_story(styles: dict) -> list:
     )
 
     story.append(PageBreak())
-    story.append(p("8. BT-HVVL-OBS-001 LTI Remediation", styles["H1"]))
+    story.append(p("10. Authentication and LTI Remediation", styles["H1"]))
     story.append(
         finding_header(
             "BT-HVVL-OBS-001",
@@ -447,7 +516,7 @@ def build_story(styles: dict) -> list:
     )
     story.append(PageBreak())
 
-    story.append(p("9. Server Deployment Requirements", styles["H1"]))
+    story.append(p("11. Server Deployment Requirements", styles["H1"]))
     story.append(p("What must be deployed", styles["H2"]))
     deploy_rows = [
         [cell("Service", styles["TableHeader"]), cell("Why", styles["TableHeader"]), cell("Data action", styles["TableHeader"])],
@@ -481,7 +550,7 @@ def build_story(styles: dict) -> list:
     story.append(make_table(command_rows, [18 * mm, 156 * mm], font_size=7.4))
     story.append(PageBreak())
 
-    story.append(p("10. Post-Deployment Retest and Exit Criteria", styles["H1"]))
+    story.append(p("12. Post-Deployment Retest and Exit Criteria", styles["H1"]))
     retest_rows = [
         [cell("Gate", styles["TableHeader"]), cell("Expected evidence", styles["TableHeader"]), cell("Owner", styles["TableHeader"])],
         [cell("Readiness", styles["TableCellBold"]), cell("/lti/health/ready = 200 and all Compose services healthy", styles["TableCell"]), cell("UAT/DevOps", styles["TableCell"])],
@@ -504,7 +573,7 @@ def build_story(styles: dict) -> list:
         )
     )
 
-    story.append(p("11. Evidence Appendix", styles["H1"]))
+    story.append(p("13. Evidence Appendix", styles["H1"]))
     story.append(p("Live focused retest", styles["H2"]))
     result_rows = [[cell("Case", styles["TableHeader"]), cell("HTTP", styles["TableHeader"]), cell("Verdict", styles["TableHeader"]), cell("Reason", styles["TableHeader"])]]
     for result in load_results():
@@ -538,10 +607,10 @@ def build_story(styles: dict) -> list:
         )
     )
 
-    story.append(p("12. Conclusion", styles["H1"]))
+    story.append(p("14. Conclusion", styles["H1"]))
     story.append(
         p(
-            "The requested remediation work is complete in the repository and has passed focused local, supply-chain, build, and current-perimeter checks. RBAC and SQL injection controls show strong evidence in the tested scope, and XSS defenses are materially strengthened through explicit Markdown URL policy, raw-HTML suppression, sink checks, CSP, and dependency reduction.",
+            "The requested remediation work is complete in the repository and has passed local, supply-chain, build, and current-perimeter checks. The broader VAPT evidence shows effective transport, authentication-gate, authorization, injection, browser, CORS, exposed-surface, dependency, secret, and build-artifact controls in the tested scope. The detailed RBAC, SQL injection, and XSS sections provide additional assurance for the highest-priority application risks.",
             styles["Body"],
         )
     )
@@ -554,7 +623,7 @@ def build_story(styles: dict) -> list:
     story.append(Spacer(1, 9 * mm))
     sign = [
         [cell("Prepared by", styles["TableHeader"]), cell("Assessment reference", styles["TableHeader"])],
-        [cell("BlueTeamer<br/>https://blueteamer.co", styles["TableCellBold"]), cell(f"{REPORT_ID}<br/>Focused remediation 1.0", styles["TableCell"])],
+        [cell("BlueTeamer<br/>https://blueteamer.co", styles["TableCellBold"]), cell(f"{REPORT_ID}<br/>Professional interim VAPT 2.0", styles["TableCell"])],
     ]
     story.append(make_table(sign, [87 * mm, 87 * mm]))
     return story
@@ -568,10 +637,10 @@ def main() -> None:
     doc = ReportDoc(
         str(PDF_PATH),
         styles,
-        title="HVVL UAT RBAC, SQL Injection and XSS Remediation Report",
-        subject="Focused VAPT remediation and deployment readiness assessment",
-        header_title="HVVL UAT RBAC / SQLi / XSS Remediation",
-        cover_footer="CONFIDENTIAL - SECURITY REMEDIATION ASSESSMENT",
+        title="HVVL UAT Web Application and API VAPT Report",
+        subject="Professional web application and API VAPT remediation and deployment readiness assessment",
+        header_title="HVVL UAT Web Application and API VAPT Report",
+        cover_footer="CONFIDENTIAL - WEB APPLICATION AND API VAPT",
     )
     doc.multiBuild(build_story(styles), canvasmaker=CalibriCanvas)
     print(PDF_PATH)
