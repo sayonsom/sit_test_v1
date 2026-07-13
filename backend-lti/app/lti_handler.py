@@ -8,12 +8,27 @@ import logging
 from typing import Tuple, Dict, Any, Optional
 import jwt
 from jwt import PyJWKClient
-from jwt.exceptions import InvalidTokenError
+from jwt.exceptions import (
+    ExpiredSignatureError,
+    InvalidAudienceError,
+    InvalidIssuerError,
+    InvalidSignatureError,
+    InvalidTokenError,
+    PyJWKClientError,
+)
 
 from .config import settings
 from .session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
+
+
+class LTIValidationError(ValueError):
+    """LTI validation failure with a safe, non-sensitive reason code."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
 
 
 # Role mappings from LTI URIs to friendly names
@@ -37,9 +52,12 @@ ROLE_MAPPINGS = {
 class LTIHandler:
     """Handles LTI 1.3 protocol operations"""
     
-    def __init__(self):
-        self.session_manager = SessionManager()
-        self.jwks_client = PyJWKClient(settings.KEY_SET_URL)
+    def __init__(self, session_manager=None, jwks_client=None):
+        self.session_manager = session_manager or SessionManager()
+        self.jwks_client = jwks_client or PyJWKClient(
+            settings.KEY_SET_URL,
+            timeout=settings.LTI_JWKS_TIMEOUT_SECONDS,
+        )
     
     def handle_login(
         self,
@@ -55,6 +73,19 @@ class LTIHandler:
         Generates state and nonce, stores them, and returns authorization URL
         """
         logger.debug("Processing LTI login initiation")
+
+        if settings.lti_configuration_errors:
+            logger.error("LTI login rejected because configuration is incomplete")
+            raise LTIValidationError("configuration_error")
+
+        if iss != settings.ISSUER:
+            logger.warning("LTI login rejected for an untrusted issuer")
+            raise LTIValidationError("invalid_issuer")
+
+        selected_client_id = (client_id or settings.CLIENT_ID).strip()
+        if selected_client_id not in settings.lti_client_ids_list:
+            logger.warning("LTI login rejected for an unregistered client ID")
+            raise LTIValidationError("invalid_client")
         
         # Generate cryptographically secure state and nonce
         state = secrets.token_urlsafe(32)
@@ -66,6 +97,7 @@ class LTIHandler:
         state_data = {
             'nonce': nonce,
             'iss': iss,
+            'client_id': selected_client_id,
             'target_link_uri': target_link_uri
         }
         self.session_manager.store_state(state, state_data)
@@ -73,7 +105,7 @@ class LTIHandler:
         # Build authorization parameters
         auth_params = {
             'response_type': 'id_token',
-            'client_id': client_id or settings.CLIENT_ID,
+            'client_id': selected_client_id,
             'redirect_uri': f"{settings.TOOL_URL}/lti/launch",
             'scope': 'openid',
             'login_hint': login_hint,
@@ -111,17 +143,22 @@ class LTIHandler:
         state_data = self.session_manager.get_state(state)
         if not state_data:
             logger.error("Invalid or expired state parameter")
-            raise ValueError("Invalid or expired state parameter")
+            raise LTIValidationError("invalid_state")
         
-        expected_nonce = state_data['nonce']
-        logger.debug(f"Retrieved nonce from state: {expected_nonce[:10]}...")
+        expected_nonce = state_data.get('nonce')
+        expected_issuer = state_data.get('iss')
+        expected_client_id = state_data.get('client_id')
+        if not all(isinstance(value, str) and value for value in (expected_nonce, expected_issuer, expected_client_id)):
+            logger.error("LTI state is missing required validation context")
+            raise LTIValidationError("invalid_state")
         
         # Validate JWT token
-        decoded_token = self._validate_token(id_token, expected_nonce)
-        
-        if not decoded_token:
-            logger.error("Token validation failed")
-            raise ValueError("Invalid JWT token")
+        decoded_token = self._validate_token(
+            id_token,
+            expected_nonce=expected_nonce,
+            expected_issuer=expected_issuer,
+            expected_client_id=expected_client_id,
+        )
         
         # Extract user and course information
         user_data = self._extract_user_info(decoded_token)
@@ -131,7 +168,13 @@ class LTIHandler:
         
         return user_data, course_data
     
-    def _validate_token(self, id_token: str, expected_nonce: str) -> Optional[Dict[str, Any]]:
+    def _validate_token(
+        self,
+        id_token: str,
+        expected_nonce: str,
+        expected_issuer: str,
+        expected_client_id: str,
+    ) -> Dict[str, Any]:
         """
         Validate JWT ID token
         
@@ -149,8 +192,9 @@ class LTIHandler:
                 id_token,
                 key=signing_key.key,
                 algorithms=['RS256'],
-                audience=settings.CLIENT_ID,
-                issuer=settings.ISSUER,
+                audience=expected_client_id,
+                issuer=expected_issuer,
+                leeway=settings.LTI_CLOCK_SKEW_SECONDS,
                 options={
                     'verify_signature': True,
                     'verify_exp': True,
@@ -165,30 +209,48 @@ class LTIHandler:
             
             # Validate nonce
             token_nonce = decoded_token.get('nonce')
-            if token_nonce != expected_nonce:
-                logger.error(f"Nonce mismatch. Expected: {expected_nonce[:10]}..., Got: {token_nonce[:10] if token_nonce else 'None'}...")
-                return None
+            if not isinstance(token_nonce, str) or not secrets.compare_digest(token_nonce, expected_nonce):
+                logger.warning("LTI token nonce validation failed")
+                raise LTIValidationError("invalid_nonce")
             
             # Validate deployment ID
             deployment_id = decoded_token.get('https://purl.imsglobal.org/spec/lti/claim/deployment_id')
-            if deployment_id != settings.DEPLOYMENT_ID:
-                logger.error(f"Deployment ID mismatch. Expected: {settings.DEPLOYMENT_ID}, Got: {deployment_id}")
-                return None
+            if deployment_id not in settings.lti_deployment_ids_list:
+                logger.warning("LTI token deployment validation failed")
+                raise LTIValidationError("invalid_deployment")
             
             # Validate message type (should be LtiResourceLinkRequest)
             message_type = decoded_token.get('https://purl.imsglobal.org/spec/lti/claim/message_type')
             if message_type != 'LtiResourceLinkRequest':
-                logger.warning(f"Unexpected message type: {message_type}")
+                logger.warning("LTI token message type validation failed")
+                raise LTIValidationError("invalid_message_type")
             
             logger.info("Token validation successful")
             return decoded_token
             
-        except InvalidTokenError as e:
-            logger.error(f"Token validation error: {str(e)}", exc_info=True)
-            return None
+        except LTIValidationError:
+            raise
+        except ExpiredSignatureError:
+            logger.warning("LTI token has expired")
+            raise LTIValidationError("expired_token")
+        except InvalidAudienceError:
+            logger.warning("LTI token audience validation failed")
+            raise LTIValidationError("invalid_audience")
+        except InvalidIssuerError:
+            logger.warning("LTI token issuer validation failed")
+            raise LTIValidationError("invalid_issuer")
+        except InvalidSignatureError:
+            logger.warning("LTI token signature validation failed")
+            raise LTIValidationError("invalid_signature")
+        except PyJWKClientError:
+            logger.error("Unable to obtain the LTI signing key from JWKS")
+            raise LTIValidationError("jwks_unavailable")
+        except InvalidTokenError:
+            logger.warning("LTI token claims validation failed")
+            raise LTIValidationError("invalid_claims")
         except Exception as e:
-            logger.error(f"Unexpected error during token validation: {str(e)}", exc_info=True)
-            return None
+            logger.error("Unexpected LTI token validation error", exc_info=True)
+            raise LTIValidationError("token_validation_failed") from e
     
     def _extract_user_info(self, decoded_token: Dict[str, Any]) -> Dict[str, Any]:
         """Extract user information from decoded JWT token"""

@@ -21,7 +21,6 @@
     "katex": "^0.16.45",
     "leaflet": "^1.9.4",
     "mapbox-gl": "^3.0.1",
-    "marked": "^11.2.0",
     "mathjs": "^12.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -31,9 +30,7 @@
     "react-router": "^6.30.4",
     "react-router-dom": "^6.30.4",
     "rehype-katex": "^7.0.0",
-    "remark": "^15.0.1",
     "remark-gfm": "^4.0.0",
-    "remark-html": "^16.0.1",
     "remark-math": "^6.0.0",
     "shpjs": "^4.0.4",
     "three": "^0.171.0",
@@ -44,6 +41,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "security:audit": "npm audit --omit=dev",
+    "security:verify-xss": "node scripts/verify-xss-controls.mjs",
     "security:verify-nginx": "sh scripts/verify-nginx-security.sh"
   },
   "browserslist": {

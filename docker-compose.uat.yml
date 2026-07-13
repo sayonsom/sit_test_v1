@@ -33,8 +33,10 @@ services:
       - CSP_FRAME_ANCESTORS=${CSP_FRAME_ANCESTORS:-'self' https://hvlabonline-uat.singaporetech.edu.sg https://xsitestg.singaporetech.edu.sg}
       - CSP_CONNECT_SRC=${CSP_CONNECT_SRC:-'self' https://maps.googleapis.com https://api.mapbox.com https://events.mapbox.com}
     depends_on:
-      - lti-backend
-      - backend-api
+      lti-backend:
+        condition: service_healthy
+      backend-api:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/health >/dev/null"]
@@ -48,7 +50,9 @@ services:
       context: ./backend-lti
     environment:
       - CLIENT_ID=${CLIENT_ID:?CLIENT_ID is required}
+      - LTI_CLIENT_IDS=${LTI_CLIENT_IDS:-${CLIENT_ID}}
       - DEPLOYMENT_ID=${DEPLOYMENT_ID:?DEPLOYMENT_ID is required}
+      - LTI_DEPLOYMENT_IDS=${LTI_DEPLOYMENT_IDS:-${DEPLOYMENT_ID}}
       - ISSUER=${ISSUER:-https://xsitestg.singaporetech.edu.sg}
       - AUTHORIZATION_ENDPOINT=${AUTHORIZATION_ENDPOINT:-https://xsitestg.singaporetech.edu.sg/d2l/lti/authenticate}
       - KEY_SET_URL=${KEY_SET_URL:-https://xsitestg.singaporetech.edu.sg/d2l/.well-known/jwks}
@@ -61,6 +65,8 @@ services:
       - REDIS_SSL=false
       - SESSION_TTL=${SESSION_TTL:-28800}
       - STATE_TTL=${STATE_TTL:-300}
+      - LTI_CLOCK_SKEW_SECONDS=${LTI_CLOCK_SKEW_SECONDS:-60}
+      - LTI_JWKS_TIMEOUT_SECONDS=${LTI_JWKS_TIMEOUT_SECONDS:-10}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://hvlabonline-uat.singaporetech.edu.sg,https://xsitestg.singaporetech.edu.sg}
       - BACKEND_API_URL=http://backend-api:8080/api/v1
       - BACKEND_API_SERVICE_TOKEN=${BACKEND_API_SERVICE_TOKEN:?BACKEND_API_SERVICE_TOKEN is required}
@@ -80,9 +86,17 @@ services:
       - ENABLE_API_DOCS=${ENABLE_API_DOCS:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
-      - redis
-      - backend-api
+      redis:
+        condition: service_healthy
+      backend-api:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import requests; requests.get('http://127.0.0.1:8000/health/ready', timeout=5).raise_for_status()\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
 
   backend-api:
     build:
@@ -113,6 +127,12 @@ services:
       - ./3d_models:/3d_models_src:ro
       - ./content_files:/content_files_src:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   postgres:
     build:
@@ -137,6 +157,11 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

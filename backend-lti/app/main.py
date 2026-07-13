@@ -10,9 +10,10 @@ import httpx
 import time
 import jwt
 from typing import Optional
+from urllib.parse import urlencode
 
 from .config import settings
-from .lti_handler import LTIHandler
+from .lti_handler import LTIHandler, LTIValidationError
 from .session_manager import SessionManager
 from .models import SessionResponse, LogoutRequest, StaffCodeExchangeRequest, StaffCodeExchangeResponse
 from .staff_oidc_handler import StaffOIDCHandler
@@ -215,8 +216,25 @@ async def sync_student_to_backend(user_data: dict) -> bool:
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Process liveness endpoint."""
     return {"status": "healthy", "service": "lti-backend"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Configuration and Redis readiness without exposing configured values."""
+    failed_checks = list(settings.lti_configuration_errors)
+    try:
+        session_manager.redis_client.ping()
+    except Exception:
+        failed_checks.append("redis")
+
+    if failed_checks:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "failed_checks": sorted(set(failed_checks))},
+        )
+    return {"status": "ready", "service": "lti-backend"}
 
 
 @app.post("/lti/login")
@@ -255,9 +273,14 @@ async def lti_login(
         logger.info(f"Redirecting to authorization URL")
         return RedirectResponse(url=auth_url, status_code=302)
         
+    except HTTPException:
+        raise
+    except LTIValidationError as e:
+        logger.warning("LTI login validation failed: %s", e.reason)
+        raise HTTPException(status_code=400, detail="Invalid LTI login request")
     except Exception as e:
         logger.error(f"Error in LTI login: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Login initiation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login initiation failed")
 
 
 @app.post("/lti/launch")
@@ -297,10 +320,10 @@ async def lti_launch(
         
         return RedirectResponse(url=redirect_url, status_code=302)
         
-    except ValueError as e:
-        logger.error(f"Validation error in LTI launch: {str(e)}")
-        # Redirect to error page
-        error_url = f"{settings.FRONTEND_URL}/lti-required?error=invalid_token"
+    except LTIValidationError as e:
+        logger.warning("LTI launch validation failed: %s", e.reason)
+        query = urlencode({"error": "invalid_token", "reason": e.reason})
+        error_url = f"{settings.FRONTEND_URL}/lti-required?{query}"
         return RedirectResponse(url=error_url, status_code=302)
     except Exception as e:
         logger.error(f"Error in LTI launch: {str(e)}", exc_info=True)

@@ -28,6 +28,12 @@ SQL_ERROR_RE = re.compile(
     r"asyncpg|psycopg|postgres|odbc|database error|stack trace|traceback)",
     re.IGNORECASE,
 )
+XSS_EXECUTABLE_RE = re.compile(
+    r"(<(?:script|svg)\b[^>]{0,300}bt-xss|"
+    r"\bon(?:error|load|click)\s*=[^>]{0,300}bt-xss|"
+    r"javascript\s*:[^\s<]{0,300}bt-xss)",
+    re.IGNORECASE,
+)
 
 UNAVAILABLE_STATUSES = {0, 502, 503, 504}
 AUTH_BLOCK_STATUSES = {401, 403}
@@ -164,10 +170,17 @@ def build_cases(args: argparse.Namespace) -> list[Case]:
     student_id = env_value("HVVL_STUDENT_ID", "1")
     student_email = env_value("HVVL_STUDENT_EMAIL", "vhvl_stud01")
     module_id = env_value("HVVL_MODULE_ID")
+    xss_payload = "<svg/onload=alert('bt-xss')>"
 
     cases = [
         Case("avail-uat-root", "UAT frontend availability", "GET", uat, "availability"),
-        Case("avail-api-courses", "Backend API availability", "GET", f"{api}/courses", "availability"),
+        Case(
+            "avail-api-courses",
+            "Backend API availability",
+            "GET",
+            f"{api}/courses",
+            "availability_or_auth_gate",
+        ),
         Case(
             "avail-brightspace-course",
             "Brightspace course availability",
@@ -272,6 +285,20 @@ def build_cases(args: argparse.Namespace) -> list[Case]:
             "GET",
             f"{api}/students/{quote_path(student_id + chr(39))}/assignments/responses",
             "sqli_no_db_error",
+        ),
+        Case(
+            "xss-student-id-reflection",
+            "XSS probe: student identifier SVG event handler",
+            "GET",
+            f"{api}/student-id/{quote_path(xss_payload)}",
+            "xss_no_executable_reflection",
+        ),
+        Case(
+            "xss-student-courses-reflection",
+            "XSS probe: student courses identifier script context",
+            "GET",
+            f"{api}/students/{quote_path(xss_payload)}/courses",
+            "xss_no_executable_reflection",
         ),
     ]
 
@@ -418,6 +445,11 @@ def classify(expectation: str, status: int, body: bytes, headers: str) -> tuple[
             return "pass", f"target reachable with status {status}"
         return "fail", f"availability check returned status {status}"
 
+    if expectation == "availability_or_auth_gate":
+        if 200 <= status < 400 or status in AUTH_BLOCK_STATUSES:
+            return "pass", f"target reachable with status {status}"
+        return "fail", f"availability check returned status {status}"
+
     if expectation == "public_or_authenticated":
         if status in AUTH_BLOCK_STATUSES or status in REDIRECT_STATUSES or 200 <= status < 300:
             return "pass", f"course catalogue returned acceptable status {status}"
@@ -449,6 +481,15 @@ def classify(expectation: str, status: int, body: bytes, headers: str) -> tuple[
         if status >= 500:
             return "review", f"server error {status}; triage for SQLi/error handling"
         return "pass", f"no SQL/database error indicator observed with status {status}"
+
+    if expectation == "xss_no_executable_reflection":
+        if XSS_EXECUTABLE_RE.search(decoded):
+            return "fail", "response reflects executable HTML or an event-handler payload"
+        if status in AUTH_BLOCK_STATUSES and "cloudflare" in decoded.lower():
+            return "pass", f"payload blocked at the edge with status {status}; marker not reflected"
+        if status >= 500:
+            return "review", f"server error {status}; triage XSS/error handling"
+        return "pass", f"no executable payload reflection observed with status {status}"
 
     return "review", f"unknown expectation {expectation}"
 

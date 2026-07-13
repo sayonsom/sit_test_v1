@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, HttpUrl, Field, UUID4
+from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, Field, UUID4
 from datetime import date
 
 # Response Schema
@@ -9,13 +9,11 @@ class RephraseRequest(BaseModel):
 
 # Student Schema
 class StudentBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     name: str
     email: EmailStr
     date_of_birth: Optional[date] = None
-
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
 
 class StudentCreate(StudentBase):
     profile_picture: Optional[HttpUrl] = None
@@ -26,12 +24,11 @@ class StudentUpdate(StudentBase):
     location: Optional[str] = None
 
 class StudentInDBBase(StudentBase):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     student_id: int = Field(..., alias="id")
     profile_picture: Optional[HttpUrl] = None
     location: Optional[str] = None
-
-    class Config:
-        orm_mode = True
 
 class Student(StudentInDBBase):
     pass
@@ -54,10 +51,9 @@ class InstructorUpdate(InstructorBase):
     pass
 
 class InstructorInDBBase(InstructorBase):
-    instructor_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    instructor_id: int = Field(..., alias="id")
 
 class Instructor(InstructorInDBBase):
     pass
@@ -82,10 +78,9 @@ class CourseUpdate(CourseBase):
     instructor_id: Optional[int] = None
 
 class CourseInDBBase(CourseBase):
-    course_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    course_id: int = Field(..., alias="id")
 
 class Course(CourseInDBBase):
     pass
@@ -104,10 +99,9 @@ class EnrollmentUpdate(BaseModel):
     expiration_date: Optional[date] = None
 
 class EnrollmentInDBBase(EnrollmentBase):
-    enrollment_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    enrollment_id: int = Field(..., alias="id")
 
 class Enrollment(EnrollmentInDBBase):
     pass
@@ -131,11 +125,9 @@ class ModuleBase(BaseModel):
     video_link_2: Optional[str] = None
 
 class ModuleInDBBase(ModuleBase):
-    module_id: UUID = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+    module_id: UUID = Field(..., alias="id")
 
 class ModuleCreate(ModuleBase):
     pass
@@ -152,16 +144,14 @@ class Option(BaseModel):
     option_text: str
 
 class Question(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     question_id: int
     assignment_id: int
     question_text: str
     question_type: str
     correct_option_id: Optional[int] = None
-    options: List[Option] = []
-
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+    options: List[Option] = Field(default_factory=list)
 
 class Assignment(BaseModel):
     assignment_id: int
@@ -177,24 +167,24 @@ class ModuleAssignments(BaseModel):
     """
     assignments: List[Assignment] = Field(default_factory=list)
 class QuestionBase(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "assignment_id": 1,
+                "question_text": "What is the capital of France?",
+                "question_type": "multiple_choice",
+                "options": ["Paris", "London", "Berlin", "Madrid"],
+                "correct_option_index": 0,
+            }
+        }
+    )
+
     question_id: int
     assignment_id: int
     question_text: str
     question_type: str
     options: Optional[List[Option]] = Field(default_factory=list)
     correct_option_index: Optional[int] = None
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "assignment_id": 1,
-                "question_text": "What is the capital of France?",
-                "question_type": "multiple_choice",
-                "options": ["Paris", "London", "Berlin", "Madrid"],
-                "correct_option_index": 0  # Assuming "Paris" is the correct answer
-            }
-        }
-
 
 # Assignment Schema
 class AssignmentBase(BaseModel):
@@ -221,10 +211,9 @@ class AssignmentUpdate(Assignment):
     pass
 
 class AssignmentInDBBase(Assignment):
-    assignment_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    assignment_id: int = Field(..., alias="id")
 
 # class Assignment(AssignmentInDBBase):
 #     pass
@@ -241,10 +230,9 @@ class QuestionUpdate(QuestionBase):
     pass
 
 class QuestionInDBBase(QuestionBase):
-    question_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    question_id: int = Field(..., alias="id")
 
 # class Question(QuestionInDBBase):
 #     pass
@@ -262,10 +250,9 @@ class TeamUpdate(TeamBase):
     pass
 
 class TeamInDBBase(TeamBase):
-    team_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    team_id: int = Field(..., alias="id")
 
 class Team(TeamInDBBase):
     pass
@@ -283,10 +270,9 @@ class TeamAssignmentUpdate(TeamAssignmentBase):
     pass
 
 class TeamAssignmentInDBBase(TeamAssignmentBase):
-    team_assignment_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    team_assignment_id: int = Field(..., alias="id")
 
 class TeamAssignment(TeamAssignmentInDBBase):
     pass
@@ -304,10 +290,9 @@ class TeamMemberUpdate(TeamMemberBase):
     pass
 
 class TeamMemberInDBBase(TeamMemberBase):
-    team_member_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    team_member_id: int = Field(..., alias="id")
 
 class TeamMember(TeamMemberInDBBase):
     pass
@@ -325,10 +310,9 @@ class ResponseUpdate(ResponseBase):
     pass
 
 class ResponseInDBBase(ResponseBase):
-    response_id: int = Field(..., alias="id")
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    response_id: int = Field(..., alias="id")
 
 class Response(ResponseInDBBase):
     pass

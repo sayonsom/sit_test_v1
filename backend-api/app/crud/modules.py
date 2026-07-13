@@ -54,7 +54,7 @@ async def create_module(conn: Connection, course_id: int, module: ModuleCreate) 
     duedate = datetime.now().date() + timedelta(days=90)
     # assignment = AssignmentCreate(module_id=module_id, assignment_title="Default Assignment", description="Basic questions to demonstrate fundamental understanding of the topic", due_date=duedate)
     # await create_assignment(conn, module_id=module_id, assignment_title="Default Assignment", description="Basic questions to demonstrate fundamental understanding of the topic", due_date=duedate)
-    return {"module_id": str(module_id), "course_id": course_id, **module.dict()}
+    return {"module_id": str(module_id), "course_id": course_id, **module.model_dump()}
 
 async def get_modules_for_course(conn: Connection, course_id: int) -> List[Dict[str, Any]]:
     sql_command = "SELECT * FROM Modules WHERE course_id = $1"
@@ -113,7 +113,7 @@ async def update_module(conn: Connection, module_id: UUID, module: ModuleCreate)
         WHERE module_id = $14
     """
     await conn.execute(sql_update, module.title, module.description, module.theory, module.concept, module.fun_fact, module.attachment_1_link, module.attachment_2_link, module.attachment_3_link, module.video_link_1, module.video_link_2, module.plottingexperimentconfig, module.InteractiveConfig, module.interactive_file, str(module_id))
-    return {"module_id": module_id, **module.dict()}
+    return {"module_id": module_id, **module.model_dump()}
 
 async def delete_module(conn: Connection, module_id: UUID) -> Dict[str, Any]:
     sql_select = "SELECT * FROM Modules WHERE module_id = $1"
