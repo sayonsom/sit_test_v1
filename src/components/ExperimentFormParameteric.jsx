@@ -1,173 +1,177 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Label, TextInput } from 'flowbite-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Button, Label, Spinner, TextInput } from 'flowbite-react';
 import axios from 'axios';
 import LineGraphModal from './LineGraphModal';
 import { API_URL } from "../env";
+import { getExperimentCalculator } from '../simulations/experimentCalculators.mjs';
+
+function resolveContentUrl(fileUrl) {
+  if (!fileUrl || typeof window === 'undefined') return fileUrl || '';
+  try {
+    const apiOrigin = new URL(API_URL || window.location.origin, window.location.origin).origin;
+    return new URL(fileUrl, apiOrigin).toString();
+  } catch (_error) {
+    return fileUrl;
+  }
+}
+
+function validateConfig(config) {
+  if (!config || typeof config !== 'object' || !config.variables || !config.output_plot || !config.compute) {
+    throw new Error('The experiment configuration is incomplete.');
+  }
+  return config;
+}
 
 const ExperimentFormParameteric = ({ url }) => {
   const [config, setConfig] = useState(null);
+  const [calculator, setCalculator] = useState(null);
   const [variables, setVariables] = useState({});
   const [chartData, setChartData] = useState({ xAxis: [], yAxis: [] });
   const [yAxisLabel, setYAxisLabel] = useState('');
   const [previousData, setPreviousData] = useState({ xAxis: [], yAxis: [] });
   const [previousSettingsLabel, setPreviousSettingsLabel] = useState('');
   const [openModal, setOpenModal] = useState(false);
-  const [computeModuleLoaded, setComputeModuleLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [simulationError, setSimulationError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-
-
-  
-
-  const apiUrl = API_URL;
-
-  const fetchConfig = async () => {
-    try {
-      console.log('Fetching signed URL...');
-      const signedUrlResponse = await axios.get(`${apiUrl}/generate-signed-url/?blob_name=${url}`);
-      const signedUrl = signedUrlResponse.data.url;
-      console.log('Signed URL:', signedUrl);
-
-      console.log('Fetching configuration using signed URL...');
-      const configResponse = await fetch(signedUrl);
-      console.log('Config Respone:')
-      console.log('Config Response Status:', configResponse.status);
-      console.log('Config Response Headers:', configResponse.headers);
-
-      if (!configResponse.ok) {
-        throw new Error(`Network response was not ok, status: ${configResponse.status}`);
-      }
-
-      console.log('Parsing configuration response to JSON...');
-      const configData = await configResponse.json();
-
-      console.log('Config Data:', configData);
-      setConfig(configData);
-
-      console.log('Loading external script...');
-   
-      const scriptUrlResponse = await axios.get(`${apiUrl}/generate-signed-url/?blob_name=${configData.compute}`);
-      const scriptUrl = scriptUrlResponse.data.url;
-      const scriptId = 'compute-module-script';
-      await loadScript(scriptUrl, scriptId);
-      setComputeModuleLoaded(true);
-      
-
-      console.log('Compute module loaded');
-    } catch (error) {
-      console.error(error);
+  const fetchConfig = useCallback(async (signal) => {
+    if (!url) {
+      throw new Error('No experiment configuration is assigned to this module.');
     }
-  };
 
-  const loadScript = (src, id) => {
-    return new Promise((resolve, reject) => {
-      if (document.getElementById(id)) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = src;
-      script.id = id;
-      script.onload = () => {
-        console.log('Script loaded:', id);
-        resolve();
-      };
-      script.onerror = () => {
-        console.error('Error loading script:', id);
-        reject();
-      };
-
-      document.body.appendChild(script);
+    const signedUrlResponse = await axios.get(`${API_URL}/generate-signed-url/`, {
+      params: { blob_name: url },
+      signal,
     });
-  };
+    const configResponse = await fetch(resolveContentUrl(signedUrlResponse.data.url), { signal });
+    if (!configResponse.ok) {
+      throw new Error(`The experiment configuration could not be loaded (${configResponse.status}).`);
+    }
 
-  useEffect(() => {
-    fetchConfig();
+    const configData = validateConfig(await configResponse.json());
+    const resolvedCalculator = getExperimentCalculator(configData.compute);
+    setConfig(configData);
+    setCalculator(() => resolvedCalculator);
+    setVariables(Object.fromEntries(
+      Object.entries(configData.variables).map(([key, definition]) => [key, definition.initial]),
+    ));
   }, [url]);
 
   useEffect(() => {
-    
-    if (config) {
+    const controller = new AbortController();
+    setIsLoading(true);
+    setLoadError('');
+    setSimulationError('');
+    setConfig(null);
+    setCalculator(null);
 
-      const initialVariables = Object.keys(config.variables).reduce((acc, key) => {
-        acc[key] = config.variables[key].initial;
-        return acc;
-      }, {});
-      setVariables(initialVariables);
-    }
-  }, [config]);
+    fetchConfig(controller.signal)
+      .catch((error) => {
+        if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') {
+          console.error('Experiment configuration failed to load', error);
+          setLoadError(error?.message || 'The experiment could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [fetchConfig, reloadKey]);
 
   const handleInputChange = (name, value) => {
-    setVariables((prev) => ({ ...prev, [name]: value }));
+    setVariables((previous) => ({ ...previous, [name]: value }));
   };
 
   const handleCompute = () => {
-    if (!computeModuleLoaded) {
-      console.error('Compute module is not loaded yet');
-      return;
+    setSimulationError('');
+    try {
+      if (!calculator || !config) {
+        throw new Error('The simulation calculator is not ready yet.');
+      }
+
+      const label = Object.entries(variables)
+        .map(([key, value]) => `${config.variables[key].variableLabel} = ${value}`)
+        .join(', ');
+      const result = calculator({ ...variables });
+
+      setPreviousSettingsLabel(yAxisLabel);
+      setYAxisLabel(label);
+      setPreviousData({ xAxis: chartData.xAxis, yAxis: chartData.yAxis });
+      setChartData({ xAxis: result.x, yAxis: result.y });
+      setOpenModal(true);
+    } catch (error) {
+      console.error('Experiment calculation failed', error);
+      setSimulationError(error?.message || 'The simulation could not be calculated.');
     }
-
-    setPreviousSettingsLabel(yAxisLabel);
-
-    let label = '';
-    for (const [key, value] of Object.entries(variables)) {
-      label += `${config.variables[key].variableLabel} = ${value}, `;
-    }
-    label = label.slice(0, -2);
-    setYAxisLabel(label);
-
-    const inputArgs = { ...variables };
-
-    const result = window.MyLibrary.calculate(inputArgs);
-
-    setPreviousData({
-      xAxis: chartData.xAxis,
-      yAxis: chartData.yAxis,
-    });
-
-    setChartData({
-      xAxis: result.x,
-      yAxis: result.y,
-    });
-
-
-    setOpenModal(true);
   };
 
-  if (!config) {
-    return <div>Loading configuration...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-48 items-center justify-center gap-3 text-gray-600" data-testid="experiment-loading">
+        <Spinner size="sm" />
+        <span>Loading experiment…</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Alert color="failure" data-testid="experiment-error">
+        <div className="flex flex-col items-start gap-3">
+          <div>
+            <span className="font-semibold">Experiment unavailable.</span>{' '}
+            {loadError}
+          </div>
+          <Button size="xs" color="failure" onClick={() => setReloadKey((key) => key + 1)}>
+            Retry
+          </Button>
+        </div>
+      </Alert>
+    );
   }
 
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault();
+      data-testid="experiment-form"
+      onSubmit={(event) => {
+        event.preventDefault();
         handleCompute();
       }}
     >
-      {Object.keys(config.variables).map((key) => {
-        const variableConfig = config.variables[key];
-        return (
-          <div key={key}>
-            <div className="mb-2 block">
-              <Label htmlFor={key} value={variableConfig.variableLabel} />
+      <div className="space-y-4">
+        {Object.keys(config.variables).map((key) => {
+          const variableConfig = config.variables[key];
+          return (
+            <div key={key}>
+              <div className="mb-2 block">
+                <Label htmlFor={key} value={variableConfig.variableLabel} />
+              </div>
+              <TextInput
+                id={key}
+                type="number"
+                value={variables[key]}
+                onChange={(event) => handleInputChange(key, Number(event.target.value))}
+                min={variableConfig.min}
+                max={variableConfig.max}
+                step={variableConfig.step || 'any'}
+                helperText={variableConfig.variableDescription}
+                required
+              />
             </div>
-            <TextInput
-              id={key}
-              type="number"
-              value={variables[key]}
-              onChange={(e) => handleInputChange(key, parseFloat(e.target.value) || 0)}
-              min={variableConfig.min}
-              max={variableConfig.max}
-              step={variableConfig.step || 'any'}
-              helperText={variableConfig.variableDescription}
-            />
-          </div>
-        );
-      })}
-      <Button type="submit" outline gradientDuoTone="pinkToOrange">
+          );
+        })}
+      </div>
+
+      {simulationError ? (
+        <Alert color="failure" className="mt-4" data-testid="simulation-error">
+          {simulationError}
+        </Alert>
+      ) : null}
+
+      <Button className="mt-5" type="submit" outline gradientDuoTone="pinkToOrange">
         Start Experiment
       </Button>
       <LineGraphModal
@@ -175,6 +179,7 @@ const ExperimentFormParameteric = ({ url }) => {
         setOpenModal={setOpenModal}
         xAxis={chartData.xAxis}
         yAxis={chartData.yAxis}
+        previousXAxis={previousData.xAxis}
         previousYAxis={previousData.yAxis}
         xAxisLabel={config.output_plot.xAxisLabel}
         yAxisLabel={config.output_plot.yAxisLabel}

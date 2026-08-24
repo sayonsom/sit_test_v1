@@ -68,6 +68,18 @@ class RBACRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("lower(i.email) = lower($2)", query)
         self.assertEqual(args, (99, "teacher-a@example.edu"))
 
+    async def test_teacher_can_read_results_for_token_scoped_course(self):
+        actor = AuthenticatedActor(
+            subject="teacher-a",
+            email="teacher-a@example.edu",
+            roles={"teacher"},
+            auth_method="staff",
+            course_ids={"2"},
+        )
+        conn = FakeConnection(fetchrow_result=None)
+        await require_course_staff_access(conn, actor, 2)
+        self.assertEqual(conn.calls, [])
+
 
 class JWTRegressionTests(unittest.IsolatedAsyncioTestCase):
     async def test_tampered_backend_token_is_rejected(self):

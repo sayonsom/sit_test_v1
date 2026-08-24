@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Badge } from 'flowbite-react';
+import { Alert, Badge, Button } from 'flowbite-react';
 import Spinner from './Spinner';
 import { useLTI } from "../contexts/LTIContext";
 import { API_URL } from "../env";
@@ -10,6 +10,8 @@ const apiUrl = API_URL;
 const ShowEnrolledCourses = () => {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const { user, authMethod } = useLTI();
 
   // Try sessionStorage first, fall back to LTI context user email
@@ -18,6 +20,8 @@ const ShowEnrolledCourses = () => {
 
   useEffect(() => {
     const fetchCourses = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         // Staff users see all courses; students see only enrolled courses
         const url = isStaff
@@ -27,6 +31,7 @@ const ShowEnrolledCourses = () => {
         setCourses(response.data);
       } catch (error) {
         console.error('Error fetching courses', error);
+        setError('Your courses could not be loaded. Please retry or contact support.');
       } finally {
         setIsLoading(false);
       }
@@ -37,10 +42,21 @@ const ShowEnrolledCourses = () => {
     } else {
       setIsLoading(false);
     }
-  }, [email, isStaff]);
+  }, [email, isStaff, reloadKey]);
 
   if (isLoading) {
     return <div><Spinner/></div>;
+  }
+
+  if (error) {
+    return (
+      <Alert color="failure">
+        <div className="flex flex-col items-start gap-3">
+          <span>{error}</span>
+          <Button size="xs" color="failure" onClick={() => setReloadKey((key) => key + 1)}>Retry</Button>
+        </div>
+      </Alert>
+    );
   }
 
   return (

@@ -3,6 +3,7 @@
 set -eu
 
 npm ci
+npm test
 npm audit --omit=dev
 npm run security:verify-xss
 npm run build

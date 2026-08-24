@@ -15,4 +15,5 @@ async def read_current_actor(
         "roles": sorted(actor.roles),
         "auth_method": actor.auth_method,
         "course_id": actor.course_id,
+        "course_ids": sorted(actor.course_ids),
     }

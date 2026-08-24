@@ -10,6 +10,7 @@ import {
 import axios from "axios";
 import AppLayout from "./AppLayout";
 import Spinner from "../components/Spinner";
+import { Alert } from "flowbite-react";
 import { API_URL } from "../env";
 
 const apiUrl = API_URL;
@@ -22,10 +23,12 @@ export default function StudentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [expandedStudent, setExpandedStudent] = useState(null);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError("");
       try {
         const [courseRes, resultsRes] = await Promise.all([
           axios.get(`${apiUrl}/courses/${courseId}`),
@@ -35,6 +38,11 @@ export default function StudentResultsPage() {
         setResults(resultsRes.data);
       } catch (err) {
         console.error("Error fetching results:", err);
+        setError(
+          err?.response?.status === 403
+            ? "This teacher account is not assigned to view results for this course."
+            : "Student scores and averages could not be loaded. Please retry or contact support."
+        );
       } finally {
         setLoading(false);
       }
@@ -53,20 +61,17 @@ export default function StudentResultsPage() {
 
   // Compute quiz-level stats
   const totalQuizzesTaken = results.reduce((sum, s) => sum + s.modules.length, 0);
-  const avgScore =
-    totalQuizzesTaken > 0
-      ? Math.round(
-          results.reduce(
-            (sum, s) =>
-              sum +
-              s.modules.reduce(
-                (mSum, m) => mSum + (m.total > 0 ? (m.correct / m.total) * 100 : 0),
-                0
-              ),
-            0
-          ) / totalQuizzesTaken
-        )
-      : 0;
+  const totalQuestionsAnswered = results.reduce(
+    (sum, student) => sum + student.modules.reduce((moduleSum, module) => moduleSum + module.total, 0),
+    0
+  );
+  const totalCorrectAnswers = results.reduce(
+    (sum, student) => sum + student.modules.reduce((moduleSum, module) => moduleSum + module.correct, 0),
+    0
+  );
+  const avgScore = totalQuestionsAnswered > 0
+    ? Math.round((totalCorrectAnswers / totalQuestionsAnswered) * 100)
+    : 0;
 
   if (loading) {
     return (
@@ -97,8 +102,10 @@ export default function StudentResultsPage() {
           </p>
         )}
 
+        {error ? <Alert color="failure" className="mb-8">{error}</Alert> : null}
+
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {!error ? <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 text-center">
             <p className="text-3xl font-bold text-purple-600">{results.length}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Students</p>
@@ -113,17 +120,17 @@ export default function StudentResultsPage() {
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Average Score</p>
           </div>
-        </div>
+        </div> : null}
 
         {/* Student Table */}
-        {results.length === 0 ? (
+        {!error && results.length === 0 ? (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">
             <p className="text-lg">No quiz submissions yet.</p>
             <p className="text-sm mt-1">
               Students will appear here after they complete a quiz.
             </p>
           </div>
-        ) : (
+        ) : !error ? (
           <>
             {/* Table Header */}
             <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -138,13 +145,8 @@ export default function StudentResultsPage() {
                 const isExpanded = expandedStudent === student.student_id;
                 const quizCount = student.modules.length;
                 const studentAvg =
-                  quizCount > 0
-                    ? Math.round(
-                        student.modules.reduce(
-                          (sum, m) => sum + (m.total > 0 ? (m.correct / m.total) * 100 : 0),
-                          0
-                        ) / quizCount
-                      )
+                  student.total_questions > 0
+                    ? Math.round((student.correct_answers / student.total_questions) * 100)
                     : 0;
 
                 return (
@@ -301,7 +303,7 @@ export default function StudentResultsPage() {
               })}
             </div>
           </>
-        )}
+        ) : null}
       </div>
     </AppLayout>
   );

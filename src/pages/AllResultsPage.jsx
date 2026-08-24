@@ -7,6 +7,7 @@ import {
 import axios from "axios";
 import AppLayout from "./AppLayout";
 import Spinner from "../components/Spinner";
+import { Alert } from "flowbite-react";
 import { API_URL } from "../env";
 
 const apiUrl = API_URL;
@@ -15,14 +16,21 @@ export default function AllResultsPage() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        setError("");
         const response = await axios.get(`${apiUrl}/courses`);
         setCourses(response.data);
       } catch (err) {
         console.error("Error fetching courses:", err);
+        setError(
+          err?.response?.status === 403
+            ? "Your teacher account is not assigned to a course results scope."
+            : "Course results could not be loaded. Please retry or contact support."
+        );
       } finally {
         setLoading(false);
       }
@@ -56,11 +64,13 @@ export default function AllResultsPage() {
           Select a course to view student quiz results.
         </p>
 
-        {courses.length === 0 ? (
+        {error ? <Alert color="failure" className="mb-6">{error}</Alert> : null}
+
+        {!error && courses.length === 0 ? (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">
             <p className="text-lg">No courses found.</p>
           </div>
-        ) : (
+        ) : !error ? (
           <div className="space-y-3">
             {courses.map((course) => (
               <button
@@ -89,7 +99,7 @@ export default function AllResultsPage() {
               </button>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </AppLayout>
   );

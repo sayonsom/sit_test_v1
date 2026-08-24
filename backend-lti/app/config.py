@@ -92,6 +92,7 @@ class Settings(BaseSettings):
         os.getenv("AAD_ALLOWED_GROUP_IDS", ""),
     )
     STAFF_ADMIN_EMAILS: str = os.getenv("STAFF_ADMIN_EMAILS", "")
+    STAFF_COURSE_IDS: str = os.getenv("STAFF_COURSE_IDS", "")
     REQUIRE_STAFF_OIDC: bool = os.getenv("REQUIRE_STAFF_OIDC", "false").lower() == "true"
 
     @staticmethod
@@ -202,6 +203,12 @@ class Settings(BaseSettings):
     @property
     def staff_admin_emails_list(self) -> List[str]:
         return [item.lower() for item in self._split_csv(self.STAFF_ADMIN_EMAILS)]
+
+    @property
+    def staff_course_ids_list(self) -> List[str]:
+        return list(dict.fromkeys(
+            item for item in self._split_csv(self.STAFF_COURSE_IDS) if item.isdigit()
+        ))
 
     @property
     def staff_oidc_redirect_uri(self) -> str:

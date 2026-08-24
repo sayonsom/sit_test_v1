@@ -1,15 +1,17 @@
-import { Badge } from 'flowbite-react';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
-import { Card } from 'flowbite-react';
+import { Alert, Button, Card, Spinner } from 'flowbite-react';
 import { API_URL } from "../env";
 
 const apiUrl = API_URL;
 
 function CourseModulesColumn( { course }) {
     const [modules, setModules] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
     // check if student is enrolled in this course or not
     // const [isEnrolled, setIsEnrolled] = useState(false);
     // const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +21,8 @@ function CourseModulesColumn( { course }) {
 
     useEffect(() => {
         const fetchModules = async () => {
+          setIsLoading(true);
+          setError('');
           try {
             const response = await axios.get(`${apiUrl}/courses/${course.course_id}/modules`);
             setModules(response.data);
@@ -26,11 +30,18 @@ function CourseModulesColumn( { course }) {
             
           } catch (error) {
             console.error('Error fetching modules', error);
+            setError(
+              error?.response?.status === 403
+                ? 'Your account is not permitted to open experiments for this course.'
+                : 'The experiment list could not be loaded.'
+            );
+          } finally {
+            setIsLoading(false);
           }
         };
     
         fetchModules();
-      }, [course]);
+      }, [course.course_id, reloadKey]);
 
     return (
         <Card className="max-w-sm">
@@ -38,7 +49,23 @@ function CourseModulesColumn( { course }) {
       <p className="font-sans text-sm font-normal text-gray-500 dark:text-gray-400">
         Learn by doing these interactive virtual experiments, which were designed by renowned experts and professors at Singapore Institute of Technology (SIT), to help you learn the concepts of the { course.title }.
       </p>
-        <ul className="my-4 space-y-3">
+        {isLoading ? (
+          <div className="my-8 flex items-center justify-center gap-3 text-sm text-gray-500">
+            <Spinner size="sm" /> Loading experiments…
+          </div>
+        ) : null}
+        {error ? (
+          <Alert color="failure" className="my-4">
+            <div className="flex flex-col items-start gap-3">
+              <span>{error}</span>
+              <Button size="xs" color="failure" onClick={() => setReloadKey((key) => key + 1)}>Retry</Button>
+            </div>
+          </Alert>
+        ) : null}
+        {!isLoading && !error && modules.length === 0 ? (
+          <p className="my-6 text-sm text-gray-500">No published experiments are available for this course.</p>
+        ) : null}
+        {!isLoading && !error ? <ul className="my-4 space-y-3">
         {modules.map((module) => (
             <li key={module.module_id}>
             <Link
@@ -52,7 +79,7 @@ function CourseModulesColumn( { course }) {
             </Link>
             </li>
         ))}
-        </ul>
+        </ul> : null}
       <div>
         <a
           href="#"

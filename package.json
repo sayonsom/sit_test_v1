@@ -39,6 +39,7 @@
     "start": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.mjs",
     "security:audit": "npm audit --omit=dev",
     "security:verify-xss": "node scripts/verify-xss-controls.mjs",
     "security:verify-nginx": "sh scripts/verify-nginx-security.sh",

@@ -11,49 +11,50 @@ import { safeMarkdownUrl } from '../security/safeMarkdown.mjs';
 const MarkdownContent = ({ contentURL }) => {
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [signedUrl, setSignedUrl] = useState('');
+  const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   const apiUrl = API_URL;
-
-  const getSignedUrl = async () => {
-    try {
-      const response = await axios.get(`${apiUrl}/generate-signed-url/?blob_name=${contentURL}`);
-      setSignedUrl(response.data.url);
-    } catch (error) {
-      console.error('Error generating signed URL', error);
-    }
-  };
-
-  const fetchContent = async (url) => {
-    try {
-      const response = await axios.get(url);
-      setContent(response.data);
-    } catch (error) {
-      console.error('Error fetching content', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     const loadContent = async () => {
       setIsLoading(true);
-      await getSignedUrl();
+      setError('');
+      try {
+        const signedUrlResponse = await axios.get(`${apiUrl}/generate-signed-url/?blob_name=${contentURL}`);
+        const contentResponse = await axios.get(signedUrlResponse.data.url);
+        setContent(contentResponse.data);
+      } catch (loadError) {
+        console.error('Error loading theory content', loadError);
+        setContent('');
+        setError('Unable to load the theory content. Please retry.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadContent();
-  }, [contentURL]);
-
-  useEffect(() => {
-    if (signedUrl) {
-      fetchContent(signedUrl);
-    }
-  }, [signedUrl]);
+  }, [apiUrl, contentURL, retryKey]);
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center">
         <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-5 text-red-900">
+        <p>{error}</p>
+        <button
+          type="button"
+          className="mt-3 rounded-md bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800"
+          onClick={() => setRetryKey((key) => key + 1)}
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -93,17 +94,16 @@ const MarkdownContent = ({ contentURL }) => {
                   </>
                 )}
               </Disclosure> */}
-              <p className="text-base leading-7 text-gray-600">
-                        <div className="prose font-sans dark:prose-invert text-justify">
-                          <ReactMarkdown
-                            children={content}
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                            skipHtml
-                            urlTransform={safeMarkdownUrl}
-                          />
-                        </div>
-                      </p>
+              <div className="prose max-w-none font-sans text-justify text-base leading-7 text-gray-600 dark:prose-invert">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  skipHtml
+                  urlTransform={safeMarkdownUrl}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
     </>
 
     
