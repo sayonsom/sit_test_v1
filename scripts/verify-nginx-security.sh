@@ -21,6 +21,8 @@ CONTAINER_ID="$(
     -p "${PORT}:80" \
     -e ENABLE_DEBUG_ROUTES=false \
     -e ENABLE_LTI_PROXY=false \
+    -e BACKEND_API_URL=http://127.0.0.1:65534/api/v1 \
+    -e LTI_BACKEND_URL=http://127.0.0.1:65533 \
     -e CSP_FRAME_ANCESTORS="'self' http://localhost:${PORT}" \
     "$IMAGE"
 )"
@@ -31,6 +33,12 @@ for _ in $(seq 1 30); do
   fi
   sleep 1
 done
+
+if ! curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+  echo "Nginx candidate did not become healthy" >&2
+  docker logs "$CONTAINER_ID" >&2 || true
+  exit 1
+fi
 
 require_header() {
   path="$1"
