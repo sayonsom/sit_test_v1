@@ -293,12 +293,12 @@ Use this checklist when testing:
 │  LTI Backend     │ 6. Validate JWT
 │                  │    Extract user/course data
 │                  │    Create session in Redis
-│                  │    Generate session token
+│                  │    Generate one-time login code
 └────────┬─────────┘
-         │ 7. Redirect: /app?session_token=...
+         │ 7. Redirect: /app?login_code=...
          ▼
 ┌──────────────────┐
-│  React Frontend  │ 8. Validate session token
+│  React Frontend  │ 8. Exchange one-time code
 │  (CRA)           │    Store user/course data
 │  Port 3000       │    Navigate to /home
 └──────────────────┘

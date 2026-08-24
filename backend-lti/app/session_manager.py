@@ -51,7 +51,7 @@ class SessionManager:
             value = json.dumps(data)
             # Store with short TTL (5 minutes)
             self.redis_client.setex(key, settings.STATE_TTL, value)
-            logger.debug(f"Stored state: {state[:10]}...")
+            logger.debug("Stored one-time LTI state")
         except Exception as e:
             logger.error(f"Error storing state: {str(e)}")
             raise
@@ -68,15 +68,13 @@ class SessionManager:
         """
         try:
             key = f"lti_state:{state}"
-            value = self.redis_client.get(key)
+            value = self.redis_client.getdel(key)
             
             if value:
-                # Delete after retrieval (one-time use)
-                self.redis_client.delete(key)
-                logger.debug(f"Retrieved and deleted state: {state[:10]}...")
+                logger.debug("Consumed one-time LTI state")
                 return json.loads(value)
             else:
-                logger.warning(f"State not found or expired: {state[:10]}...")
+                logger.warning("LTI state was not found or has expired")
                 return None
         except Exception as e:
             logger.error(f"Error retrieving state: {str(e)}")
@@ -115,8 +113,7 @@ class SessionManager:
             value = json.dumps(session_data)
             self.redis_client.setex(key, settings.SESSION_TTL, value)
             
-            logger.info(f"Created session for user: {user_data.get('email', 'unknown')}")
-            logger.debug(f"Session token: {session_token[:10]}...")
+            logger.info("Created LTI session")
             
             return session_token
         except Exception as e:
@@ -144,10 +141,10 @@ class SessionManager:
                 session_data['last_accessed'] = datetime.utcnow().isoformat()
                 self.redis_client.setex(key, settings.SESSION_TTL, json.dumps(session_data))
                 
-                logger.debug(f"Retrieved session for token: {session_token[:10]}...")
+                logger.debug("Retrieved LTI session")
                 return session_data
             else:
-                logger.warning(f"Session not found or expired: {session_token[:10]}...")
+                logger.warning("LTI session was not found or has expired")
                 return None
         except Exception as e:
             logger.error(f"Error retrieving session: {str(e)}")
@@ -168,10 +165,10 @@ class SessionManager:
             deleted = self.redis_client.delete(key)
             
             if deleted:
-                logger.info(f"Deleted session: {session_token[:10]}...")
+                logger.info("Deleted LTI session")
                 return True
             else:
-                logger.warning(f"Session not found for deletion: {session_token[:10]}...")
+                logger.warning("LTI session was not found during deletion")
                 return False
         except Exception as e:
             logger.error(f"Error deleting session: {str(e)}")
@@ -194,11 +191,31 @@ class SessionManager:
             if value:
                 # Reset TTL
                 self.redis_client.expire(key, settings.SESSION_TTL)
-                logger.debug(f"Refreshed session: {session_token[:10]}...")
+                logger.debug("Refreshed LTI session")
                 return True
             else:
-                logger.warning(f"Session not found for refresh: {session_token[:10]}...")
+                logger.warning("LTI session was not found during refresh")
                 return False
         except Exception as e:
             logger.error(f"Error refreshing session: {str(e)}")
             return False
+
+    def create_login_code(self, session_token: str) -> str:
+        """Create a short-lived, one-time browser handoff code for a session."""
+        login_code = secrets.token_urlsafe(32)
+        self.redis_client.setex(
+            f"lti_login_code:{login_code}",
+            settings.LOGIN_CODE_TTL,
+            session_token,
+        )
+        logger.debug("Created one-time LTI login code")
+        return login_code
+
+    def consume_login_code(self, login_code: str) -> Optional[str]:
+        """Atomically consume a browser handoff code and return its session token."""
+        session_token = self.redis_client.getdel(f"lti_login_code:{login_code}")
+        if session_token:
+            logger.debug("Consumed one-time LTI login code")
+            return session_token
+        logger.warning("LTI login code was not found or has expired")
+        return None

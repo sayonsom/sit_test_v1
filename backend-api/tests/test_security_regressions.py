@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from app.core import auth
 from app.core.auth import AuthenticatedActor
+from app.core.config_validation import readiness_configuration_errors
 from app.core.rbac import (
     is_student_enrolled,
     require_course_staff_access,
@@ -132,6 +133,30 @@ class SQLInjectionRegressionTests(unittest.TestCase):
                     violations.append(f"{source_path.relative_to(app_root)}:{node.lineno}")
 
         self.assertEqual(violations, [], f"Interpolated SQL reaches database calls: {violations}")
+
+
+class ReadinessConfigurationTests(unittest.TestCase):
+    def test_rejects_placeholder_and_reused_security_values(self):
+        values = {
+            "DB_PASSWORD": "<strong-password>",
+            "API_SERVICE_TOKEN": "a" * 40,
+            "BACKEND_API_JWT_SECRET": "a" * 40,
+            "BACKEND_API_JWT_AUDIENCE": "hvvl-backend-api",
+            "LOCAL_STORAGE_SIGNING_KEY": "b" * 40,
+        }
+        errors = readiness_configuration_errors(values)
+        self.assertIn("database_password", errors)
+        self.assertIn("independent_signing_secrets", errors)
+
+    def test_accepts_independent_strong_security_values(self):
+        values = {
+            "DB_PASSWORD": "db-password-with-24-chars",
+            "API_SERVICE_TOKEN": "s" * 40,
+            "BACKEND_API_JWT_SECRET": "j" * 40,
+            "BACKEND_API_JWT_AUDIENCE": "hvvl-backend-api",
+            "LOCAL_STORAGE_SIGNING_KEY": "l" * 40,
+        }
+        self.assertEqual(readiness_configuration_errors(values), [])
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ High-level architecture
   - src/env.js reads runtime values from window.__ENV first, then build-time Vite env values.
 - Routing
   - src/App.js defines routes for /, /home, /results, /courses, /courses/:courseShortCode, /module/:moduleID, /app (LTI entry), /dashboard, /lti-required, /callback, and a fallback.
-  - src/pages/AppEntry.jsx implements the LTI flow: reads session_token from query, validates it through ${LTI_API_URL}/lti/session/validate, stores the returned backend API token, then navigates to /home or /lti-required.
+  - src/pages/AppEntry.jsx implements the LTI flow: removes login_code from the URL, atomically exchanges it through ${LTI_API_URL}/lti/session/exchange, stores tab-scoped session/API tokens, then navigates to /home or /lti-required.
 - Application shell
   - src/pages/AppLayout.js is the main layout (headlessui, heroicons) providing sidebar/topbar, dark mode toggle, and a profile menu. It renders children routes inside the main content area.
 - Data access and state

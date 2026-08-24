@@ -2,7 +2,7 @@
 Pydantic Models for LTI Backend API
 Defines request/response schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
 
 
@@ -11,6 +11,16 @@ class SessionResponse(BaseModel):
     user: Dict[str, Any]
     course: Dict[str, Any]
     api_token: Optional[str] = None
+
+
+class LoginCodeExchangeRequest(BaseModel):
+    """One-time browser handoff code from a completed LTI launch."""
+    login_code: str = Field(min_length=32, max_length=256)
+
+
+class LoginCodeExchangeResponse(SessionResponse):
+    """Session material returned after consuming a one-time login code."""
+    session_token: str
 
 
 class LogoutRequest(BaseModel):

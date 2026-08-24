@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     # Session Configuration
     SESSION_TTL: int = int(os.getenv("SESSION_TTL", "28800"))  # 8 hours default
     STATE_TTL: int = int(os.getenv("STATE_TTL", "300"))  # 5 minutes for state/nonce
+    LOGIN_CODE_TTL: int = int(os.getenv("LOGIN_CODE_TTL", "60"))
     
     # CORS Configuration
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000")
@@ -91,6 +92,7 @@ class Settings(BaseSettings):
         os.getenv("AAD_ALLOWED_GROUP_IDS", ""),
     )
     STAFF_ADMIN_EMAILS: str = os.getenv("STAFF_ADMIN_EMAILS", "")
+    REQUIRE_STAFF_OIDC: bool = os.getenv("REQUIRE_STAFF_OIDC", "false").lower() == "true"
 
     @staticmethod
     def _split_csv(raw: str) -> List[str]:
@@ -133,6 +135,51 @@ class Settings(BaseSettings):
             for name, values in checks.items()
             if not values or any(not self._is_configured_value(value) for value in values)
         ]
+
+    @staticmethod
+    def _is_strong_secret(value: str) -> bool:
+        return Settings._is_configured_value(value) and len(value) >= 32
+
+    @property
+    def readiness_configuration_errors(self) -> List[str]:
+        errors = list(self.lti_configuration_errors)
+        secret_checks = {
+            "backend_api_service_token": self.BACKEND_API_SERVICE_TOKEN,
+            "backend_api_jwt_secret": self.BACKEND_API_JWT_SECRET,
+        }
+        errors.extend(
+            name for name, value in secret_checks.items() if not self._is_strong_secret(value)
+        )
+        if not self._is_configured_value(self.BACKEND_API_JWT_AUDIENCE):
+            errors.append("backend_api_jwt_audience")
+        if (
+            self.BACKEND_API_SERVICE_TOKEN == self.BACKEND_API_JWT_SECRET
+            and self._is_strong_secret(self.BACKEND_API_SERVICE_TOKEN)
+        ):
+            errors.append("independent_backend_secrets")
+
+        if self.REQUIRE_STAFF_OIDC:
+            staff_checks = {
+                "staff_oidc_client_id": self.STAFF_OIDC_CLIENT_ID,
+                "staff_oidc_authority": self.STAFF_OIDC_AUTHORITY,
+                "staff_oidc_redirect_uri": self.staff_oidc_redirect_uri,
+            }
+            errors.extend(
+                name
+                for name, value in staff_checks.items()
+                if not self._is_configured_value(value)
+            )
+            if not any(
+                (
+                    self.STAFF_ALLOWED_EMAIL_DOMAIN.strip(),
+                    self.staff_allowed_emails_list,
+                    self.staff_allowed_roles_list,
+                    self.staff_allowed_group_ids_list,
+                )
+            ):
+                errors.append("staff_access_policy")
+
+        return sorted(set(errors))
 
     @property
     def staff_oidc_scopes_list(self) -> List[str]:

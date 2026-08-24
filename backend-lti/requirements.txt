@@ -4,7 +4,7 @@ uvicorn[standard]==0.46.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
 PyJWT[crypto]==2.13.0
-cryptography==49.0.0
+cryptography==50.0.0
 redis==7.4.0
 python-multipart==0.0.32
 httpx==0.28.1

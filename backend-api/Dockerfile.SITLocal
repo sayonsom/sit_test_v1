@@ -32,7 +32,6 @@ ENV DB_HOST=postgres
 ENV DB_PORT=5432
 ENV DB_NAME=aligndb
 ENV DB_USER=alignuser
-ENV DB_PASSWORD=alignpass
 ENV ENVIRONMENT=local
 
 # Create wait script for PostgreSQL readiness
@@ -42,6 +41,8 @@ set -e\n\
 host="$1"\n\
 shift\n\
 cmd="$@"\n\
+\n\
+: "${DB_PASSWORD:?DB_PASSWORD is required}"\n\
 \n\
 until PGPASSWORD=$DB_PASSWORD psql -h "$host" -U "$DB_USER" -d "$DB_NAME" -c "\\q"; do\n\
   >&2 echo "Postgres is unavailable - sleeping"\n\

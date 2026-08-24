@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Form, Request, status, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +30,7 @@ from app.api.v1.endpoints import (
     questions,
     responses,
 )
+from app.core.config_validation import readiness_configuration_errors
 import uvicorn
 import os
 
@@ -91,6 +92,17 @@ app.include_router(responses.router, prefix="/api/v1", tags=["Responses"])
 @app.get("/health")
 async def health():
     return {"status": "200 ok"}
+
+
+@app.get("/health/ready")
+async def readiness():
+    failed_checks = readiness_configuration_errors()
+    if failed_checks:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "failed_checks": failed_checks},
+        )
+    return {"status": "ready", "service": "backend-api"}
 
 # Index and other routes
 @app.get("/", response_class=HTMLResponse)

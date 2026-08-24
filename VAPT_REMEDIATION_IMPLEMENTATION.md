@@ -20,7 +20,11 @@ This note documents the code changes made to improve the next RBAC/IDOR/SQLi-foc
 - Staff allow-list checks now run server-side before an API token is issued.
 - Frontend now stores the API token separately and uses it for backend API calls.
 - Cached staff sessions are validated against `/api/v1/auth/me` instead of trusting `sessionStorage.staff_user` alone.
-- Upgraded `react-router` and `react-router-dom` to `6.30.4`; `npm audit --omit=dev` now reports zero vulnerabilities.
+- Completed LTI launches now place only a 60-second one-time login code in the browser URL; long-lived session tokens are returned after an atomic server-side exchange.
+- Redis state and login-code values are atomically consumed to prevent replay races, and token/state fragments are no longer written to logs.
+- Frontend, API, and LTI dynamic responses use no-store origin/CDN directives; `/env-config.js` has a dedicated deployed verification gate.
+- Backend readiness rejects missing, placeholder, short, or reused security values and requires the UAT staff OIDC registration.
+- Upgraded Axios to `1.19.0`, React Router DOM to `7.18.2`, Vite to `7.3.6`, and backend cryptography to `50.0.0`; full npm audit and all three Python manifest audits report zero known vulnerabilities.
 
 ## Required Deployment Environment
 
@@ -52,9 +56,15 @@ STAFF_ALLOWED_EMAILS=
 STAFF_ALLOWED_ROLES=
 STAFF_ALLOWED_GROUP_IDS=
 STAFF_ADMIN_EMAILS=munhin.yong@singaporetech.edu.sg
+REQUIRE_STAFF_OIDC=true
+LOGIN_CODE_TTL=60
 ```
 
 If `BACKEND_API_JWT_AUDIENCE` is set, set the same value on both `backend-api` and `backend-lti`.
+Use independent random values of at least 32 characters for the service token,
+JWT secret, and local-storage signing key. Brightspace and ADFS client or
+deployment identifiers must come from their registrations and must not be
+randomly generated.
 
 ## UAT Deployment Target
 

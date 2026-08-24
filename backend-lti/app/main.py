@@ -15,7 +15,13 @@ from urllib.parse import urlencode
 from .config import settings
 from .lti_handler import LTIHandler, LTIValidationError
 from .session_manager import SessionManager
-from .models import SessionResponse, LogoutRequest, StaffCodeExchangeRequest, StaffCodeExchangeResponse
+from .models import (
+    LoginCodeExchangeRequest,
+    LoginCodeExchangeResponse,
+    SessionResponse,
+    StaffCodeExchangeRequest,
+    StaffCodeExchangeResponse,
+)
 from .staff_oidc_handler import StaffOIDCHandler
 
 # Configure logging
@@ -223,7 +229,7 @@ async def health_check():
 @app.get("/health/ready")
 async def readiness_check():
     """Configuration and Redis readiness without exposing configured values."""
-    failed_checks = list(settings.lti_configuration_errors)
+    failed_checks = list(settings.readiness_configuration_errors)
     try:
         session_manager.redis_client.ping()
     except Exception:
@@ -254,7 +260,7 @@ async def lti_login(
     """
     try:
         logger.info(f"LTI Login Initiation received from issuer: {iss}")
-        logger.debug(f"Login hint: {login_hint}, Target: {target_link_uri}")
+        logger.debug("Received LTI login parameters")
         
         # Validate required parameters
         if not iss or not login_hint or not target_link_uri:
@@ -293,10 +299,10 @@ async def lti_launch(
     Handle LTI 1.3 launch request from Brightspace
     
     This endpoint receives the JWT ID token, validates it, extracts user/course info,
-    creates a session, and redirects to the frontend with a session token.
+    creates a session, and redirects with a short-lived one-time login code.
     """
     try:
-        logger.info(f"LTI Launch received with state: {state}")
+        logger.info("LTI launch received")
         
         # Validate required parameters
         if not id_token or not state:
@@ -312,11 +318,12 @@ async def lti_launch(
         # Create session
         session_token = session_manager.create_session(user_data, course_data)
         
-        logger.info(f"Session created for user: {user_data.get('email', 'unknown')}")
-        
-        # Redirect to frontend with session token
-        redirect_url = f"{settings.FRONTEND_URL}/app?session_token={session_token}"
-        logger.debug(f"Redirecting to: {redirect_url}")
+        login_code = session_manager.create_login_code(session_token)
+        logger.info("LTI session created")
+
+        # Only a short-lived, one-time code is placed in browser history.
+        redirect_url = f"{settings.FRONTEND_URL}/app?login_code={login_code}"
+        logger.debug("Redirecting completed LTI launch to the frontend")
         
         return RedirectResponse(url=redirect_url, status_code=302)
         
@@ -360,9 +367,9 @@ async def staff_exchange(payload: StaffCodeExchangeRequest):
         return StaffCodeExchangeResponse(user=user, claims=claims, api_token=api_token)
     except HTTPException:
         raise
-    except ValueError as e:
-        logger.error(f"Staff code exchange failed: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError:
+        logger.warning("Staff code exchange was rejected")
+        raise HTTPException(status_code=400, detail="Staff sign-in could not be completed")
     except Exception as e:
         logger.error(f"Unexpected staff code exchange error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Staff sign-in failed")
@@ -424,6 +431,29 @@ async def validate_session(authorization: Optional[str] = Header(None)) -> Sessi
         raise HTTPException(status_code=500, detail="Session validation failed")
 
 
+@app.post("/lti/session/exchange", response_model=LoginCodeExchangeResponse)
+async def exchange_login_code(payload: LoginCodeExchangeRequest) -> LoginCodeExchangeResponse:
+    """Consume a one-time launch code without exposing a session token in the URL."""
+    session_token = session_manager.consume_login_code(payload.login_code)
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Invalid or expired login code")
+
+    session_data = session_manager.get_session(session_token)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return LoginCodeExchangeResponse(
+        session_token=session_token,
+        user=session_data["user"],
+        course=session_data["course"],
+        api_token=create_backend_api_token(
+            session_data["user"],
+            session_data["course"],
+            auth_method="lti",
+        ),
+    )
+
+
 @app.post("/lti/logout")
 async def logout(authorization: Optional[str] = Header(None)):
     """
@@ -442,7 +472,7 @@ async def logout(authorization: Optional[str] = Header(None)):
             
             # Delete session
             session_manager.delete_session(session_token)
-            logger.info(f"Session destroyed for token")
+            logger.info("Session destroyed")
         
         return JSONResponse(
             content={"message": "Logged out successfully"},
