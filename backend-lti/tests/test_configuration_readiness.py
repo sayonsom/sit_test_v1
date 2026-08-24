@@ -25,6 +25,7 @@ class ConfigurationReadinessTests(unittest.TestCase):
         "STAFF_ALLOWED_EMAILS",
         "STAFF_ALLOWED_ROLES",
         "STAFF_ALLOWED_GROUP_IDS",
+        "STAFF_COURSE_IDS",
     )
 
     def setUp(self):
@@ -49,6 +50,7 @@ class ConfigurationReadinessTests(unittest.TestCase):
         settings.STAFF_ALLOWED_EMAILS = ""
         settings.STAFF_ALLOWED_ROLES = ""
         settings.STAFF_ALLOWED_GROUP_IDS = ""
+        settings.STAFF_COURSE_IDS = "2,2,invalid,7"
 
     def tearDown(self):
         for name, value in self.original.items():
@@ -72,6 +74,9 @@ class ConfigurationReadinessTests(unittest.TestCase):
         errors = settings.readiness_configuration_errors
         self.assertIn("staff_oidc_client_id", errors)
         self.assertIn("staff_access_policy", errors)
+
+    def test_staff_course_scope_accepts_only_numeric_ids(self):
+        self.assertEqual(settings.staff_course_ids_list, ["2", "7"])
 
 
 if __name__ == "__main__":

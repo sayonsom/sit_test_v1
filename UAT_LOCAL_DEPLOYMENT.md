@@ -100,6 +100,13 @@ from Brightspace.
 
 Staff listed in `STAFF_ADMIN_EMAILS` must log out and sign in again after deployment so their refreshed `vhvl_api_token` includes the `admin` role.
 
+Approved ADFS teachers receive only the course scopes listed in
+`STAFF_COURSE_IDS` (comma-separated internal course IDs). The bundled HVVL
+course is ID `2`; keep this list explicit so teacher score access remains
+course-scoped rather than granting global administrator access. Teachers must
+log out and sign in again after this value changes so the refreshed API token
+contains the updated scope.
+
 ## 4. Apply DB Hardening To Existing Volumes
 
 For a fresh `postgres_data` volume, the base schema and seed data are loaded by

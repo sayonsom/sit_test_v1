@@ -29,14 +29,14 @@
     },
     "timeStep": {
         "variableLabel": "Simulation Timestep",
-        "variableDescription": "Unit: microseconds | ",
+        "variableDescription": "Unit: milliseconds (ms) | 0.001 ms equals 1 microsecond",
         "initial": 0.001,
         "max": 1,
-        "min": 0
+      "min": 0.000001
     },
     "totalTime": {
         "variableLabel": "Total Simulation Time",
-        "variableDescription": "Unit: microseconds | ",
+        "variableDescription": "Unit: milliseconds (ms) | 0.3 ms equals 300 microseconds",
         "initial": 0.3,
         "max": 1,
         "min": 0.1
@@ -44,7 +44,7 @@
    
 },
 "output_plot": {
-    "xAxisLabel": "Simulation Time",
+    "xAxisLabel": "Time (microseconds)",
     "yAxisLabel": "Voltage (kV)",
     "title": "Transient Voltage"
 },

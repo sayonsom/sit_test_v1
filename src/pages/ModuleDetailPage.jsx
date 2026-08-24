@@ -19,6 +19,11 @@ import { API_URL } from "../env";
 class ModelErrorBoundary extends Component {
     constructor(props) { super(props); this.state = { hasError: false }; }
     static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidUpdate(previousProps) {
+        if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
+            this.setState({ hasError: false });
+        }
+    }
     render() {
         if (this.state.hasError) {
             return (
@@ -252,7 +257,7 @@ export default function ModuleDetailPage() {
                             <Tab.Panel className="bg-white dark:bg-gray-800 p-4 rounded-b-lg" ref={modelContainerRef} style={{ height: '80vh', position: 'relative' }}>
                                 {selectedTab === 1 && (
                                     <>
-                                        <ModelErrorBoundary>
+                                        <ModelErrorBoundary resetKey={module.interactive_file}>
                                             <ModuleViewer url={module.interactive_file} />
                                         </ModelErrorBoundary>
                                         <Button
@@ -273,7 +278,7 @@ export default function ModuleDetailPage() {
 
                            
 
-                        <Tab.Panel className="bg-white dark:bg-gray-800 p-4 rounded-b-lg" ref={modelContainerRef} style={{ height: '80vh', position: 'relative' }}>
+                        <Tab.Panel className="bg-white dark:bg-gray-800 p-4 rounded-b-lg">
                         <Card className="max-w-full shadow-lg">
                         <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                             Experiment

@@ -135,6 +135,8 @@ async def require_course_staff_access(
 ) -> None:
     if _is_privileged(actor):
         return
+    if actor.is_teacher and str(course_id) in actor.course_ids:
+        return
     if actor.is_teacher and await is_course_teacher(conn, actor, course_id):
         return
     raise HTTPException(status_code=403, detail="Staff access denied for requested course")

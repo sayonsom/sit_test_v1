@@ -19,6 +19,7 @@ class AuthenticatedActor:
     roles: set[str] = field(default_factory=set)
     auth_method: str = "unknown"
     course_id: str | None = None
+    course_ids: set[str] = field(default_factory=set)
     claims: dict[str, Any] = field(default_factory=dict)
 
     def has_any_role(self, *roles: str) -> bool:
@@ -123,6 +124,15 @@ def _extract_course_id(claims: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_course_ids(claims: dict[str, Any]) -> set[str]:
+    values = _as_list(claims.get("course_ids"))
+    course_ids = {str(value).strip() for value in values if str(value).strip()}
+    single_course_id = _extract_course_id(claims)
+    if single_course_id:
+        course_ids.add(single_course_id)
+    return course_ids
+
+
 async def require_service_token(
     x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
 ):
@@ -180,6 +190,7 @@ async def get_authenticated_actor(
         roles=roles,
         auth_method=auth_method,
         course_id=_extract_course_id(claims),
+        course_ids=_extract_course_ids(claims),
         claims=claims,
     )
 

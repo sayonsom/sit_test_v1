@@ -103,6 +103,8 @@ def create_backend_api_token(
         "iat": now,
         "exp": now + min(settings.SESSION_TTL, 8 * 60 * 60),
     }
+    if auth_method == "staff" and settings.staff_course_ids_list:
+        claims["course_ids"] = settings.staff_course_ids_list
     if course_data:
         claims["course"] = course_data
         claims["course_id"] = course_data.get("course_id") or course_data.get("id")
