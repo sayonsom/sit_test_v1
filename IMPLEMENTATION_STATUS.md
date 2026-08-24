@@ -141,7 +141,7 @@ LOG_LEVEL=INFO
 - Routing stays the same
 
 **4. Update `src/pages/AppEntry.jsx`**
-- Handle session_token from query params
+- Exchange the one-time login_code from query params
 - Validate and store in localStorage
 - Redirect to /home
 - Use code from migration plan Phase 2, Step 2.3

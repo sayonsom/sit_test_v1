@@ -91,7 +91,7 @@ class LTIHandler:
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
         
-        logger.debug(f"Generated state: {state[:10]}... nonce: {nonce[:10]}...")
+        logger.debug("Generated LTI state and nonce")
         
         # Store state data with short TTL (5 minutes)
         state_data = {
@@ -164,7 +164,7 @@ class LTIHandler:
         user_data = self._extract_user_info(decoded_token)
         course_data = self._extract_course_info(decoded_token)
         
-        logger.info(f"Successfully extracted data for user: {user_data.get('email', 'unknown')}")
+        logger.info("Successfully extracted LTI user and course data")
         
         return user_data, course_data
     
@@ -205,7 +205,7 @@ class LTIHandler:
                 }
             )
             
-            logger.debug(f"Token decoded successfully, sub: {decoded_token.get('sub', 'unknown')}")
+            logger.debug("LTI token decoded successfully")
             
             # Validate nonce
             token_nonce = decoded_token.get('nonce')
@@ -290,7 +290,7 @@ class LTIHandler:
             'sub': decoded_token.get('sub', 'unknown')
         }
         
-        logger.debug(f"Extracted user info: {user_data['email']}, roles: {friendly_roles}")
+        logger.debug("Extracted LTI user information")
         return user_data
     
     def _extract_course_info(self, decoded_token: Dict[str, Any]) -> Dict[str, Any]:
@@ -318,5 +318,5 @@ class LTIHandler:
             'context_type': context_claim.get('type', []),
         }
         
-        logger.debug(f"Extracted course info: {course_data['course_code']} - {course_data['course_title']}")
+        logger.debug("Extracted LTI course information")
         return course_data

@@ -133,7 +133,7 @@ mypy app/
 │  LTI        │
 │  Backend    │
 └──────┬──────┘
-       │ 4. Redirect with session_token
+       │ 4. Redirect with one-time login_code
        ▼
 ┌─────────────┐
 │  Frontend   │

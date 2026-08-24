@@ -149,9 +149,9 @@ https://elianna-evaporative-ariane.ngrok-free.dev/app
 3. Proxy forwards to: `http://localhost:8000/lti/login`
 4. Backend redirects to Brightspace auth
 5. Brightspace POSTs JWT to: `https://elianna-evaporative-ariane.ngrok-free.dev/lti/launch`
-6. Backend validates JWT and redirects to: `https://elianna-evaporative-ariane.ngrok-free.dev/app?session_token=...`
-7. Proxy forwards to: `http://localhost:3000/app?session_token=...`
-8. Frontend validates session and loads the app
+6. Backend validates JWT and redirects to: `https://elianna-evaporative-ariane.ngrok-free.dev/app?login_code=...`
+7. Proxy forwards to: `http://localhost:3000/app?login_code=...`
+8. Frontend exchanges the one-time code and loads the app
 
 ## Logs
 

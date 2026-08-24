@@ -211,14 +211,13 @@ INFO: Redirecting to authorization URL
 
 Then:
 ```
-INFO: LTI Launch received with state: abcd123...
-DEBUG: Retrieved nonce from state: xyz789...
+INFO: LTI launch received
+DEBUG: Consumed one-time LTI state
 DEBUG: Validating JWT token
 DEBUG: Obtained signing key from JWKS
-DEBUG: Token decoded successfully
+DEBUG: LTI token decoded successfully
 INFO: Token validation successful
-DEBUG: Extracted user info: student@singaporetech.edu.sg, roles: ['Learner']
-INFO: Session created for user: student@singaporetech.edu.sg
+INFO: LTI session created
 ```
 
 ### 7.2 Check Browser Flow
@@ -227,19 +226,19 @@ You should be redirected through:
 1. Brightspace → `/lti/login` (POST)
 2. Brightspace auth → validates user
 3. `/lti/launch` (POST) → validates JWT
-4. Redirect to frontend → `/app?session_token=...`
-5. Frontend validates session
+4. Redirect to frontend → `/app?login_code=...`
+5. Frontend atomically exchanges the short-lived code for the session
 6. Redirect to `/home`
 
 ### 7.3 Verify Session
 
 **In Browser Console:**
 ```javascript
-// Check localStorage
-localStorage.getItem('lti_session_token')
+// Check tab-scoped session storage after redirect to /home
+sessionStorage.getItem('lti_session_token')
 // Should show a long token
 
-localStorage.getItem('lti_user')
+sessionStorage.getItem('lti_user')
 // Should show user JSON
 
 localStorage.getItem('lti_course')

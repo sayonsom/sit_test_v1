@@ -65,6 +65,14 @@ The script writes raw headers, bodies, `summary.json`, and `summary.md` under `o
 
 Before authenticated retesting, deploy the remediation code with `docker-compose.uat.yml` and set the shared API-token environment variables documented in `UAT_LOCAL_DEPLOYMENT.md` and `VAPT_REMEDIATION_IMPLEMENTATION.md`.
 
+Run the deployment gate first. Do not begin authenticated testing unless it
+passes:
+
+```sh
+sh scripts/verify-deployed-vapt-controls.sh \
+  https://hvlabonline-uat.singaporetech.edu.sg
+```
+
 After logging in manually through the browser/proxy, export captured session material as environment variables. Use only the values for the authorized UAT accounts.
 
 Student profile:

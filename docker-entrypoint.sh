@@ -7,6 +7,7 @@ PROXY_CONF="/etc/nginx/conf.d/backend-proxy.conf"
 LTI_PROXY_CONF="/etc/nginx/conf.d/lti-proxy.conf"
 DEBUG_ROUTES_CONF="/etc/nginx/conf.d/lti-debug-routes.conf"
 SECURITY_HEADERS_CONF="/etc/nginx/snippets/security-headers.conf"
+NO_STORE_HEADERS_CONF="/etc/nginx/snippets/no-store-headers.conf"
 
 escape_js() {
   printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
@@ -48,13 +49,25 @@ add_header Cross-Origin-Resource-Policy "same-origin" always;
 add_header Content-Security-Policy "$CSP_VALUE" always;
 NGINX
 
+cat > "$NO_STORE_HEADERS_CONF" <<'NGINX'
+add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0, s-maxage=0" always;
+add_header CDN-Cache-Control "no-store" always;
+add_header Cloudflare-CDN-Cache-Control "no-store" always;
+add_header Surrogate-Control "no-store" always;
+add_header Pragma "no-cache" always;
+add_header Expires "0" always;
+NGINX
+
 # Generate different proxy config for HTTPS vs HTTP upstreams
 case "$UPSTREAM" in
   https://*)
     cat > "$PROXY_CONF" <<NGINX
 location ^~ /api/v1/ {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $UPSTREAM;
+    proxy_hide_header Cache-Control;
+    proxy_hide_header Expires;
     proxy_ssl_server_name on;
     proxy_ssl_verify on;
     proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
@@ -69,7 +82,10 @@ NGINX
     cat > "$PROXY_CONF" <<NGINX
 location ^~ /api/v1/ {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $UPSTREAM;
+    proxy_hide_header Cache-Control;
+    proxy_hide_header Expires;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -85,7 +101,10 @@ if [ "${ENABLE_LTI_PROXY:-true}" = "true" ]; then
       cat > "$LTI_PROXY_CONF" <<NGINX
 location ^~ /lti/ {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $LTI_UPSTREAM;
+    proxy_hide_header Cache-Control;
+    proxy_hide_header Expires;
     proxy_ssl_server_name on;
     proxy_ssl_verify on;
     proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
@@ -100,7 +119,10 @@ NGINX
       cat > "$LTI_PROXY_CONF" <<NGINX
 location ^~ /lti/ {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $LTI_UPSTREAM;
+    proxy_hide_header Cache-Control;
+    proxy_hide_header Expires;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -113,6 +135,7 @@ else
   cat > "$LTI_PROXY_CONF" <<'NGINX'
 location ^~ /lti/ {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     return 404;
 }
 NGINX
@@ -122,6 +145,7 @@ if [ "${ENABLE_DEBUG_ROUTES:-false}" = "true" ]; then
   cat > "$DEBUG_ROUTES_CONF" <<NGINX
 location ^~ /docs {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $LTI_UPSTREAM;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
@@ -131,6 +155,7 @@ location ^~ /docs {
 
 location = /openapi.json {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     proxy_pass $LTI_UPSTREAM/openapi.json;
     proxy_set_header Host \$host;
     proxy_set_header X-Real-IP \$remote_addr;
@@ -142,11 +167,13 @@ else
   cat > "$DEBUG_ROUTES_CONF" <<'NGINX'
 location ^~ /docs {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     return 404;
 }
 
 location = /openapi.json {
     include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/no-store-headers.conf;
     return 404;
 }
 NGINX

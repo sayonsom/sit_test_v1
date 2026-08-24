@@ -1,4 +1,9 @@
 # LTI 1.3 Migration Plan
+
+> Historical design note: examples below that pass `session_token` in a URL or
+> use `localStorage` are superseded. The implemented flow uses a short-lived
+> one-time `login_code`, `/lti/session/exchange`, and tab-scoped
+> `sessionStorage` as documented in `UAT_LOCAL_DEPLOYMENT.md`.
 ## From Auth0 to SIT Brightspace Integration
 
 ### 📋 Overview

@@ -17,68 +17,48 @@ On the UAT server:
 
 ```sh
 cd /opt/sit_test_v1
+
+# Preserve the server-owned secret file before pulling the release that stops
+# tracking .env.uat.
+install -d -m 700 "$HOME/.config/hvvl"
+if [ -f .env.uat ]; then
+  install -m 600 .env.uat "$HOME/.config/hvvl/.env.uat"
+fi
+
 git fetch origin
 git checkout main
 git pull --ff-only origin main
+
+if [ -f "$HOME/.config/hvvl/.env.uat" ]; then
+  install -m 600 "$HOME/.config/hvvl/.env.uat" .env.uat
+fi
 ```
 
 If deploying a security-fix branch before merge, check out that branch instead.
 
 ## 2. Create Or Update `.env.uat`
 
-Keep this file out of git.
+Keep this file out of git. The repository contains only `.env.uat.example`.
 
 ```sh
-cat > .env.uat <<'EOF'
-FRONTEND_PORT=3000
-
-CLIENT_ID=<brightspace-lti-client-id>
-LTI_CLIENT_IDS=<brightspace-lti-client-id>
-DEPLOYMENT_ID=<brightspace-lti-deployment-id>
-LTI_DEPLOYMENT_IDS=<brightspace-lti-deployment-id>
-ISSUER=https://xsitestg.singaporetech.edu.sg
-AUTHORIZATION_ENDPOINT=https://xsitestg.singaporetech.edu.sg/d2l/lti/authenticate
-KEY_SET_URL=https://xsitestg.singaporetech.edu.sg/d2l/.well-known/jwks
-LTI_CLOCK_SKEW_SECONDS=60
-LTI_JWKS_TIMEOUT_SECONDS=10
-
-TOOL_URL=https://hvlabonline-uat.singaporetech.edu.sg
-FRONTEND_URL=https://hvlabonline-uat.singaporetech.edu.sg
-ALLOWED_ORIGINS=https://hvlabonline-uat.singaporetech.edu.sg,https://xsitestg.singaporetech.edu.sg
-CORS_ALLOWED_ORIGINS=https://hvlabonline-uat.singaporetech.edu.sg,https://xsitestg.singaporetech.edu.sg
-CSP_FRAME_ANCESTORS='self' https://hvlabonline-uat.singaporetech.edu.sg https://xsitestg.singaporetech.edu.sg
-
-REACT_APP_AAD_CLIENT_ID=<staff-adfs-client-id>
-REACT_APP_AAD_AUTHORITY=https://fs-uat.singaporetech.edu.sg/adfs
-REACT_APP_AAD_REDIRECT_URI=https://hvlabonline-uat.singaporetech.edu.sg/oauth2/callback
-REACT_APP_AAD_SCOPES=openid
-REACT_APP_AAD_ALLOWED_EMAIL_DOMAIN=singaporetech.edu.sg
-REACT_APP_AAD_ALLOWED_EMAILS=dhivya.sampathkumar@singaporetech.edu.sg,munhin.yong@singaporetech.edu.sg,stlatest01@singaporetech.edu.sg,G12069@singaporetech.edu.sg
-STAFF_ADMIN_EMAILS=munhin.yong@singaporetech.edu.sg
-
-POSTGRES_DB=aligndb
-POSTGRES_USER=alignuser
-POSTGRES_PASSWORD=<strong-uat-db-password>
-
-BACKEND_API_SERVICE_TOKEN=<strong-random-service-token>
-BACKEND_API_JWT_SECRET=<strong-random-jwt-secret>
-BACKEND_API_JWT_AUDIENCE=hvvl-backend-api
-LOCAL_STORAGE_SIGNING_KEY=<strong-random-file-url-signing-key>
-
-ENABLE_API_DOCS=false
-ENABLE_DEBUG_ROUTES=false
-DEBUG=false
-LOG_LEVEL=INFO
-EOF
-
+test -f .env.uat || cp .env.uat.example .env.uat
 chmod 600 .env.uat
 ```
+
+Replace every angle-bracket value in `.env.uat`. The Compose release is pinned
+to disabled API docs and debug routes, so those switches are not accepted from
+the environment.
 
 `CLIENT_ID` and `DEPLOYMENT_ID` are the public registration identifiers shown
 in the SIT Brightspace LTI 1.3 tool registration. They are not random secrets.
 The values must match the registration that launches this UAT tool. If the
 registration has more than one accepted client or deployment, put the complete
 comma-separated allow-list in `LTI_CLIENT_IDS` or `LTI_DEPLOYMENT_IDS`.
+
+`REACT_APP_AAD_CLIENT_ID` is also a public registration identifier, but it must
+come from the SIT ADFS/OIDC application registration. It must not be generated
+randomly. The Compose readiness gate requires both the client ID and authority
+because staff sign-in is part of this deployment.
 
 The Brightspace registration must use these exact UAT endpoints:
 
@@ -87,15 +67,22 @@ The Brightspace registration must use these exact UAT endpoints:
 - OpenID Connect issuer: `https://xsitestg.singaporetech.edu.sg`
 - Brightspace JWKS URL: `https://xsitestg.singaporetech.edu.sg/d2l/.well-known/jwks`
 
-Generate random values on the UAT server with:
+Generate separate random values for `POSTGRES_PASSWORD`,
+`BACKEND_API_SERVICE_TOKEN`, `BACKEND_API_JWT_SECRET`, and
+`LOCAL_STORAGE_SIGNING_KEY` on the UAT server with:
 
 ```sh
 openssl rand -base64 48
 ```
 
+Do not reuse the service token, JWT secret, or storage signing key. Readiness
+requires each value to be at least 32 characters and rejects placeholders or
+reused signing values.
+
 ## 3. Deploy The Local Stack
 
 ```sh
+docker compose --env-file .env.uat -f docker-compose.uat.yml config --quiet
 docker compose --env-file .env.uat -f docker-compose.uat.yml pull
 docker compose --env-file .env.uat -f docker-compose.uat.yml build --pull --no-cache virtuallab backend-api lti-backend
 docker compose --env-file .env.uat -f docker-compose.uat.yml up -d --remove-orphans
@@ -106,6 +93,10 @@ This release changes the frontend, `backend-api`, and `lti-backend`; all three
 images must be rebuilt. PostgreSQL and Redis data volumes must be retained.
 Existing in-flight LTI state expires within five minutes, so users should start
 a fresh Brightspace launch after deployment.
+
+This release replaces session tokens in browser URLs with one-time login codes.
+Old in-flight launch URLs cannot be resumed after deployment; start a new launch
+from Brightspace.
 
 Staff listed in `STAFF_ADMIN_EMAILS` must log out and sign in again after deployment so their refreshed `vhvl_api_token` includes the `admin` role.
 
@@ -131,12 +122,8 @@ not-null constraints that are intentionally left commented in the migration.
 ## 5. Smoke Test
 
 ```sh
-curl -i https://hvlabonline-uat.singaporetech.edu.sg/health
-curl -i https://hvlabonline-uat.singaporetech.edu.sg/lti/health/ready
-curl -i https://hvlabonline-uat.singaporetech.edu.sg/env-config.js
-curl -i https://hvlabonline-uat.singaporetech.edu.sg/api/v1/auth/me
-curl -i https://hvlabonline-uat.singaporetech.edu.sg/api/v1/students/
-curl -i "https://hvlabonline-uat.singaporetech.edu.sg/api/v1/generate-signed-url/?blob_name=content_files/test.txt"
+sh scripts/verify-deployed-vapt-controls.sh \
+  https://hvlabonline-uat.singaporetech.edu.sg
 ```
 
 Expected unauthenticated responses:
@@ -158,7 +145,23 @@ Then launch the tool from `D2L Training SandBox14 (VHVL Test)`. A direct browser
 visit to `/lti/launch` is not a valid test because Brightspace must supply the
 signed ID token and one-time state.
 
-## 6. Rerun Retest
+## 6. Edge Configuration
+
+The platform team must configure Cloudflare or any upstream caching layer to
+bypass cache for the exact path `/env-config.js`, then purge any previously
+cached object for that path. The application sends `Cache-Control`,
+`CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, and `Surrogate-Control`
+no-store directives, but the edge rule must not override them.
+Cloudflare consumes its service-specific header instead of forwarding it to
+the browser; the public verifier therefore checks the forwarded
+`CDN-Cache-Control` directive and requires `cf-cache-status` not to be `HIT`.
+
+Cloudflare and AWS load-balancer cookies are platform-managed. Record their
+owner, purpose, lifetime, domain/path, and supported flags in the platform
+cookie register. Disable load-balancer stickiness when it is not required;
+otherwise document the provider-controlled attributes and approved exception.
+
+## 7. Rerun Retest
 
 ```sh
 python3 scripts/hvvl_vapt_retest.py \

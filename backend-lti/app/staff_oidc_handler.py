@@ -111,7 +111,7 @@ class StaffOIDCHandler:
 
         if response.status_code >= 400:
             detail = self._extract_token_error(response)
-            logger.error(f"Staff token exchange failed: {detail}")
+            logger.error("Staff token exchange failed")
             raise ValueError(detail)
 
         token_data = response.json()
@@ -182,10 +182,9 @@ class StaffOIDCHandler:
 
     def _consume_state(self, state: str) -> Optional[Dict[str, Any]]:
         key = f"staff_oidc_state:{state}"
-        value = self.session_manager.redis_client.get(key)
+        value = self.session_manager.redis_client.getdel(key)
         if not value:
             return None
-        self.session_manager.redis_client.delete(key)
         try:
             return json.loads(value)
         except json.JSONDecodeError:
@@ -235,7 +234,10 @@ class StaffOIDCHandler:
             raise ValueError(f"Invalid id_token: {str(error)}") from error
 
         token_nonce = claims.get("nonce")
-        if expected_nonce and token_nonce and token_nonce != expected_nonce:
+        if expected_nonce and (
+            not isinstance(token_nonce, str)
+            or not secrets.compare_digest(token_nonce, expected_nonce)
+        ):
             raise ValueError("Nonce mismatch in id_token.")
 
         return claims

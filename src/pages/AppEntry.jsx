@@ -26,8 +26,9 @@ export default function AppEntry() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const sessionToken = searchParams.get("session_token");
+    const loginCode = searchParams.get("login_code");
     const errorParam = searchParams.get("error");
+    window.history.replaceState(null, "", "/app");
 
     // Check if there's an error from LTI backend
     if (errorParam) {
@@ -39,13 +40,11 @@ export default function AppEntry() {
       return;
     }
 
-    if (!sessionToken) {
-      console.error('No session token provided');
+    if (!loginCode) {
+      console.error('No login code provided');
       navigate("/lti-required", { replace: true });
       return;
     }
-
-    window.history.replaceState(null, "", "/app");
 
     // A fresh LTI launch must never inherit identity from a prior session.
     // Wipe every auth-related key before validating the new token; otherwise
@@ -53,18 +52,18 @@ export default function AppEntry() {
     // and the user has to log in twice to see the correct account.
     clearPriorAuthState();
 
-    // Validate and store session token
-    const validateSession = async () => {
+    const exchangeLoginCode = async () => {
       try {
-        const response = await axios.get(
-          `${LTI_API_URL}/lti/session/validate`,
-          {
-            headers: { Authorization: `Bearer ${sessionToken}` },
-            timeout: 10000
-          }
+        const response = await axios.post(
+          `${LTI_API_URL}/lti/session/exchange`,
+          { login_code: loginCode },
+          { timeout: 10000 },
         );
 
-        console.log('Session validated successfully');
+        const sessionToken = response.data.session_token;
+        if (!sessionToken) {
+          throw new Error('Session exchange response is missing session token');
+        }
 
         // Store session token for this browser tab only.
         sessionStorage.setItem('lti_session_token', sessionToken);
@@ -89,16 +88,16 @@ export default function AppEntry() {
         // already-mounted context (with possibly stale user state) and the
         // user would have to click again to see the correct account.
         window.location.replace('/home');
-      } catch (error) {
-        console.error('Session validation failed:', error);
-        setError('Session validation failed');
+      } catch (_error) {
+        console.error('Session exchange failed');
+        setError('Session exchange failed');
         setTimeout(() => {
           navigate("/lti-required", { replace: true });
         }, 2000);
       }
     };
 
-    validateSession();
+    exchangeLoginCode();
   }, [navigate, searchParams]);
 
   return (

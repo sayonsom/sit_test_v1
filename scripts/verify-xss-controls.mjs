@@ -39,4 +39,16 @@ for (const file of await sourceFiles(sourceRoot)) {
   );
 }
 
+const appEntry = await readFile(path.join(sourceRoot, 'pages', 'AppEntry.jsx'), 'utf8');
+assert.equal(
+  appEntry.includes('searchParams.get("session_token")'),
+  false,
+  'LTI session tokens must not be accepted from browser URLs',
+);
+assert.equal(
+  appEntry.includes('searchParams.get("login_code")'),
+  true,
+  'LTI launch must use a short-lived one-time login code',
+);
+
 console.log('XSS controls verified: unsafe Markdown URLs blocked and no React HTML injection sinks found.');
