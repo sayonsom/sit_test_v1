@@ -132,7 +132,10 @@ services:
       - ./content_files:/content_files_src:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/health/ready >/dev/null"]
+      # Preserve the readiness response in Docker health logs. It contains only
+      # failed check names, never configured values, and turns an opaque
+      # "container is unhealthy" report into an actionable diagnosis.
+      test: ["CMD-SHELL", "response=$$(wget --quiet --content-on-error --output-document=- http://127.0.0.1:8080/health/ready 2>&1); status=$$?; printf '%s\\n' \"$$response\"; exit $$status"]
       interval: 15s
       timeout: 10s
       retries: 5

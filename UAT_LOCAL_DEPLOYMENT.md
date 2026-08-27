@@ -81,6 +81,14 @@ reused signing values.
 
 ## 3. Deploy The Local Stack
 
+Run the secret-safe environment preflight before pulling or rebuilding images.
+It reports variable names and policy failures only; configured values are never
+printed. Do not continue until it passes:
+
+```sh
+python3 scripts/validate_uat_environment.py .env.uat
+```
+
 ```sh
 docker compose --env-file .env.uat -f docker-compose.uat.yml config --quiet
 docker compose --env-file .env.uat -f docker-compose.uat.yml pull
@@ -145,8 +153,17 @@ If readiness is `503`, inspect only the named failed checks and correct
 `.env.uat`; do not replace Brightspace IDs with random values:
 
 ```sh
+python3 scripts/validate_uat_environment.py .env.uat
+
+docker inspect --format '{{range .State.Health.Log}}{{println .Output}}{{end}}' \
+  "$(docker compose --env-file .env.uat -f docker-compose.uat.yml ps -q backend-api)"
+
+docker compose --env-file .env.uat -f docker-compose.uat.yml logs --tail=200 backend-api
 docker compose --env-file .env.uat -f docker-compose.uat.yml logs --tail=200 lti-backend
 ```
+
+The health output and preflight intentionally omit configured values. Never
+paste `.env.uat` itself into Jira, email, chat, or a support ticket.
 
 Then launch the tool from `D2L Training SandBox14 (VHVL Test)`. A direct browser
 visit to `/lti/launch` is not a valid test because Brightspace must supply the

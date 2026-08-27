@@ -50,6 +50,8 @@ sithvl-scorm-package2/
 screenshots/
 
 # Backend API Python cache
+__pycache__/
+*.py[cod]
 backend-api/__pycache__/
 backend-api/**/__pycache__/
 backend-api/venv/

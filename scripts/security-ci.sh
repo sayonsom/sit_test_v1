@@ -10,6 +10,7 @@ npm run build
 
 PYTHON_BIN="${PYTHON_BIN:-$(command -v python3.11 || command -v python3)}"
 PIP_AUDIT_VENV="${PIP_AUDIT_VENV:-/tmp/sit-vapt-pip-audit}"
+"$PYTHON_BIN" -m unittest discover -s scripts/tests -v
 "$PYTHON_BIN" -m venv "$PIP_AUDIT_VENV"
 "$PIP_AUDIT_VENV/bin/python" -m pip install --quiet --upgrade pip pip-audit
 "$PIP_AUDIT_VENV/bin/pip-audit" -r backend-api/requirements.txt
