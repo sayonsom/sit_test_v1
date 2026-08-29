@@ -223,14 +223,16 @@ async def sync_student_to_backend(user_data: dict) -> bool:
 
 
 @app.get("/health")
+@app.get("/lti/health")
 async def health_check():
-    """Process liveness endpoint."""
+    """Process liveness endpoint for internal and same-origin proxy checks."""
     return {"status": "healthy", "service": "lti-backend"}
 
 
 @app.get("/health/ready")
+@app.get("/lti/health/ready")
 async def readiness_check():
-    """Configuration and Redis readiness without exposing configured values."""
+    """Configuration and Redis readiness for internal and public proxy checks."""
     failed_checks = list(settings.readiness_configuration_errors)
     try:
         session_manager.redis_client.ping()
