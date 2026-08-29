@@ -64,6 +64,10 @@ jobs:
       - run: docker compose -f docker-compose.uat.yml build virtuallab backend-api lti-backend
       - run: docker compose -f docker-compose.uat.yml up -d --wait --wait-timeout 240
       - run: docker compose -f docker-compose.uat.yml ps
+      - name: Verify same-origin LTI readiness route
+        run: |
+          body="$(curl --fail --silent --show-error http://127.0.0.1:3000/lti/health/ready)"
+          printf '%s' "$body" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ready"'
       - name: Preserve diagnostics when startup fails
         if: failure()
         run: |
