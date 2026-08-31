@@ -76,26 +76,44 @@ openssl rand -base64 48
 ```
 
 Do not reuse the service token, JWT secret, or storage signing key. Readiness
-requires each value to be at least 32 characters and rejects placeholders or
+requires the database password to be at least 16 characters and each of the
+other three values to be at least 32 characters. It rejects placeholders and
 reused signing values.
+
+`POSTGRES_PASSWORD` must contain at least 16 characters. The official
+PostgreSQL image applies that variable only when a data volume is first
+initialised. Changing `.env.uat` alone does **not** change the login password
+inside an existing volume. Use the data-preserving rotation command in the next
+section when upgrading a volume that was created with a legacy short password.
 
 ## 3. Deploy The Local Stack
 
-Run the secret-safe environment preflight before pulling or rebuilding images.
-It reports variable names and policy failures only; configured values are never
-printed. Do not continue until it passes:
+Use the guarded deployment script instead of running the individual Compose
+build/start commands. It validates the environment before doing any build,
+checks that an existing database volume accepts the configured password, waits
+for all five services, and automatically prints the redacted Docker health
+reason if startup fails. A password mismatch stops before the expensive image
+build and directs the operator to the explicit rotation mode:
 
 ```sh
-python3 scripts/validate_uat_environment.py .env.uat
+sudo python3 scripts/deploy_uat_stack.py .env.uat
 ```
 
+For an existing PostgreSQL volume that still uses the legacy short password:
+
+1. Generate a new password with `openssl rand -base64 48`.
+2. Put that value in `POSTGRES_PASSWORD` in `.env.uat`.
+3. Run the deployment once with the explicit rotation flag:
+
 ```sh
-docker compose --env-file .env.uat -f docker-compose.uat.yml config --quiet
-docker compose --env-file .env.uat -f docker-compose.uat.yml pull
-docker compose --env-file .env.uat -f docker-compose.uat.yml build --pull --no-cache virtuallab backend-api lti-backend
-docker compose --env-file .env.uat -f docker-compose.uat.yml up -d --remove-orphans
-docker compose --env-file .env.uat -f docker-compose.uat.yml ps
+sudo python3 scripts/deploy_uat_stack.py .env.uat --rotate-postgres-password
 ```
+
+The rotation runs `ALTER ROLE` over the PostgreSQL container's local socket,
+verifies the new password over TCP, and never deletes or reinitialises
+`postgres_data`. It does not print the password or put it on a subprocess
+command line. Subsequent releases use the normal command without the rotation
+flag.
 
 This release changes the frontend, `backend-api`, and `lti-backend`; all three
 images must be rebuilt. PostgreSQL and Redis data volumes must be retained.
@@ -164,6 +182,12 @@ docker compose --env-file .env.uat -f docker-compose.uat.yml logs --tail=200 lti
 
 The health output and preflight intentionally omit configured values. Never
 paste `.env.uat` itself into Jira, email, chat, or a support ticket.
+
+If the health output is `failed_checks:["database_password"]` while the API log
+shows `Postgres is up`, the configured password is accepted by PostgreSQL but
+is shorter than the VAPT minimum. Do not weaken the readiness check or restore
+the legacy password; perform the one-time data-preserving rotation described in
+Section 3.
 
 Then launch the tool from `D2L Training SandBox14 (VHVL Test)`. A direct browser
 visit to `/lti/launch` is not a valid test because Brightspace must supply the
